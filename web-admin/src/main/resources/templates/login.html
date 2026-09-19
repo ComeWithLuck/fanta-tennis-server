@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page('เข้าสู่ระบบ', ~{::content})}" lang="th">
+<body>
+<div th:fragment="content" th:remove="tag">
+    <h1>เข้าสู่ระบบ</h1>
+    <div class="card" style="max-width:420px">
+        <div class="error" th:if="${error}" th:text="${error}"></div>
+        <form method="post" th:action="@{/login}">
+            <input type="hidden" name="_csrf" th:value="${csrf}">
+            <label>ชื่อผู้ใช้</label>
+            <input name="username" autocomplete="username" required>
+            <label>รหัสผ่าน</label>
+            <input name="password" type="password" autocomplete="current-password" required>
+            <button type="submit">เข้าสู่ระบบ</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

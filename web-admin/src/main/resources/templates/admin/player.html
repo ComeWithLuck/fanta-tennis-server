@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page('ผู้เล่น', ~{::content})}" lang="th">
+<body>
+<div th:fragment="content" th:remove="tag">
+    <h1 th:text="${player.name}">ผู้เล่น</h1>
+    <p class="sub">
+        <span th:text="'บัญชี: ' + ${account.username}"></span> ·
+        <span th:text="'เลเวล ' + ${player.level}"></span> ·
+        <span th:text="'เงิน ' + ${player.gold}"></span> ·
+        <span th:text="'AP ' + (${account.ap} ?: 0)"></span>
+        <span class="badge banned" th:if="${account.banned}"
+              th:text="'ถูกแบนถึง ' + (${account.bannedUntil} != null ? ${#dates.format(account.bannedUntil, 'dd/MM/yyyy')} : '-')"></span>
+    </p>
+
+    <div class="row">
+        <div class="card">
+            <h2 style="margin-top:0">แบน / ปลดแบน</h2>
+            <form method="post" th:action="@{'/admin/player/' + ${player.id} + '/ban'}">
+                <input type="hidden" name="_csrf" th:value="${csrf}">
+                <label>เหตุผล</label>
+                <input name="reason" required>
+                <label>จำนวนวัน</label>
+                <input name="days" type="number" value="7" min="1" max="3650" required>
+                <button type="submit" class="danger">แบน</button>
+            </form>
+            <form method="post" th:action="@{'/admin/player/' + ${player.id} + '/unban'}" th:if="${account.banned}">
+                <input type="hidden" name="_csrf" th:value="${csrf}">
+                <button type="submit" class="secondary">ปลดแบน</button>
+            </form>
+            <p class="muted" style="font-size:13px">แบนมีผลตอนล็อกอินครั้งถัดไป · ถ้าผู้เล่นออนไลน์อยู่ ให้เตะด้วยคำสั่ง <code>-serverKick</code> ในเกม</p>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-top:0">แจกเงิน / AP</h2>
+            <form method="post" th:action="@{'/admin/player/' + ${player.id} + '/give-gold'}">
+                <input type="hidden" name="_csrf" th:value="${csrf}">
+                <label>เงิน (ใส่ค่าติดลบเพื่อหัก)</label>
+                <input name="amount" type="number" value="10000" required>
+                <button type="submit">ให้เงิน</button>
+            </form>
+            <form method="post" th:action="@{'/admin/player/' + ${player.id} + '/give-ap'}">
+                <input type="hidden" name="_csrf" th:value="${csrf}">
+                <label>AP</label>
+                <input name="amount" type="number" value="1000" required>
+                <button type="submit">ให้ AP</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top:0">แจกไอเทม</h2>
+        <form method="get" th:action="@{'/admin/player/' + ${player.id}}">
+            <label>ค้นหาไอเทมในร้าน (ชื่อ หรือหมายเลขสินค้า)</label>
+            <input name="item" th:value="${itemQuery}" placeholder="เช่น Racket">
+            <button type="submit" class="secondary">ค้นหา</button>
+        </form>
+
+        <table th:if="${products != null and !products.isEmpty()}">
+            <tr><th>หมายเลข</th><th>ชื่อ</th><th>หมวด</th><th>ราคา</th><th>แจก</th></tr>
+            <tr th:each="pr : ${products}">
+                <td th:text="${pr.productIndex}"></td>
+                <td th:text="${pr.name}"></td>
+                <td th:text="${pr.category}"></td>
+                <td th:text="${pr.price0} + ' ' + (${pr.priceType} ?: '')"></td>
+                <td>
+                    <form method="post" th:action="@{'/admin/player/' + ${player.id} + '/give-item'}" class="inline">
+                        <input type="hidden" name="_csrf" th:value="${csrf}">
+                        <input type="hidden" name="productIndex" th:value="${pr.productIndex}">
+                        <input type="hidden" name="quantity" value="1">
+                        <button type="submit" style="margin:0;padding:4px 10px">ให้ 1 ชิ้น</button>
+                    </form>
+                </td>
+            </tr>
+        </table>
+        <p class="muted" th:if="${products != null and products.isEmpty()}">ไม่พบไอเทม</p>
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top:0" th:text="'กระเป๋า (' + ${inventory.size()} + ' ชิ้น)'">กระเป๋า</h2>
+        <table th:if="${!inventory.isEmpty()}">
+            <tr><th>หมวด</th><th>itemIndex</th><th>จำนวน</th><th>useType</th></tr>
+            <tr th:each="i : ${inventory}">
+                <td th:text="${i.category}"></td>
+                <td th:text="${i.itemIndex}"></td>
+                <td th:text="${i.itemCount}"></td>
+                <td th:text="${i.useType}"></td>
+            </tr>
+        </table>
+        <p class="muted" th:if="${inventory.isEmpty()}">ว่าง</p>
+    </div>
+</div>
+</body>
+</html>

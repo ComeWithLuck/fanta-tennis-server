@@ -79,7 +79,11 @@ public class LoginPacketHandler implements PacketHandler<FTConnection, CMSGLogin
         if (antiCheatEnabled) {
             if (loginPacket.remaining() >= 4) {
                 int ver = loginPacket.read(Integer.class);
-                if (ver != this.AC_VERSION) {
+                // local change: config 'anticheat.version' = 0 means "not pinned yet" -> accept and log the
+                // value the client agent sends, so it can be pinned afterwards (upstream rejects everything
+                // while the config row is missing, which is how it ships)
+                log.info("[AC-VERSION] client sent {} · configured {}", ver, this.AC_VERSION);
+                if (this.AC_VERSION != 0 && ver != this.AC_VERSION) {
                     SMSGLogin loginAnswer = SMSGLogin.builder()
                             .result(AuthenticationServiceImpl.INVAILD_VERSION)
                             .build();
@@ -87,6 +91,7 @@ public class LoginPacketHandler implements PacketHandler<FTConnection, CMSGLogin
                     return;
                 }
             } else {
+                log.info("[AC-VERSION] client sent no anti-cheat version (remaining {} bytes)", loginPacket.remaining());
                 SMSGLogin loginAnswer = SMSGLogin.builder()
                         .result(AuthenticationServiceImpl.INVAILD_VERSION)
                         .build();

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page('หน้าแรก', ~{::content})}" lang="th">
+<body>
+<div th:fragment="content" th:remove="tag">
+    <h1>FantaTennis — เซิร์ฟเวอร์ของเรา</h1>
+    <p class="sub">สมัครบัญชีเพื่อเข้าเล่น แล้วเปิดเกมผ่าน FT_Launcher</p>
+
+    <div class="card">
+        <h2 style="margin-top:0">เริ่มเล่น</h2>
+        <ol>
+            <li>สมัครบัญชีที่หน้า <a th:href="@{/register}">สมัคร</a></li>
+            <li>เปิด <code>FT_Launcher.exe</code> แล้วรอให้อัปเดตไฟล์จนเสร็จ</li>
+            <li>กดเล่น แล้วล็อกอินด้วยบัญชีที่สมัครไว้</li>
+        </ol>
+    </div>
+</div>
+</body>
+</html>

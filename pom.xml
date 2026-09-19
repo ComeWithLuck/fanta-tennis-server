@@ -43,6 +43,7 @@
         <module>ac-server</module>
         <module>commons-proto</module>
         <module>packet-generator</module>
+        <module>web-admin</module>
     </modules>
 
     <build>

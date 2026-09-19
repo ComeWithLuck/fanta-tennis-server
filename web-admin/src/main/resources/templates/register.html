@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page('สมัครบัญชี', ~{::content})}" lang="th">
+<body>
+<div th:fragment="content" th:remove="tag">
+    <h1>สมัครบัญชี</h1>
+    <div class="card" style="max-width:460px">
+        <div class="error" th:if="${error}" th:text="${error}"></div>
+        <form method="post" th:action="@{/register}">
+            <input type="hidden" name="_csrf" th:value="${csrf}">
+            <label>ชื่อผู้ใช้ (ใช้ล็อกอินในเกม)</label>
+            <input name="username" th:value="${username}" autocomplete="username" required>
+            <label>รหัสผ่าน</label>
+            <input name="password" type="password" autocomplete="new-password" required>
+            <label>ยืนยันรหัสผ่าน</label>
+            <input name="password2" type="password" autocomplete="new-password" required>
+            <label>อีเมล (ไม่บังคับ)</label>
+            <input name="email" type="email" autocomplete="email">
+            <button type="submit">สมัคร</button>
+        </form>
+        <p class="muted" style="font-size:13px">ชื่อผู้ใช้ a-z A-Z 0-9 _ ยาว 4-16 ตัว · รหัสผ่านยาว 4-20 ตัว (ช่องรหัสผ่านในเกมรับได้เท่านี้)</p>
+    </div>
+</div>
+</body>
+</html>

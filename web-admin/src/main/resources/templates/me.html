@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page('บัญชีของฉัน', ~{::content})}" lang="th">
+<body>
+<div th:fragment="content" th:remove="tag">
+    <h1 th:text="${account.username}">บัญชี</h1>
+    <p class="sub">
+        <span class="badge gm" th:if="${account.gameMaster}">GM</span>
+        <span class="badge banned" th:if="${account.banned}" th:text="'ถูกแบน: ' + (${account.banReason} ?: '-')"></span>
+        <span class="muted" th:text="'AP: ' + (${account.ap} ?: 0)"></span>
+    </p>
+
+    <div class="row">
+        <div class="card">
+            <h2 style="margin-top:0">ตัวละคร</h2>
+            <p class="muted" th:if="${characters.isEmpty()}">ยังไม่มีตัวละคร สร้างได้ในเกม</p>
+            <table th:if="${!characters.isEmpty()}">
+                <tr><th>ชื่อ</th><th>เลเวล</th><th>เงิน</th></tr>
+                <tr th:each="c : ${characters}">
+                    <td th:text="${c.name}"></td>
+                    <td th:text="${c.level}"></td>
+                    <td th:text="${c.gold}"></td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-top:0">เปลี่ยนรหัสผ่าน</h2>
+            <div class="error" th:if="${error}" th:text="${error}"></div>
+            <div class="ok" th:if="${param.changed != null}">เปลี่ยนรหัสผ่านแล้ว</div>
+            <form method="post" th:action="@{/me/password}">
+                <input type="hidden" name="_csrf" th:value="${csrf}">
+                <label>รหัสผ่านเดิม</label>
+                <input name="current" type="password" required>
+                <label>รหัสผ่านใหม่</label>
+                <input name="password" type="password" required>
+                <label>ยืนยันรหัสผ่านใหม่</label>
+                <input name="password2" type="password" required>
+                <button type="submit">บันทึก</button>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:fragment="page(title, body)" lang="th">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title} + ' · FantaTennis'">FantaTennis</title>
+    <link rel="stylesheet" th:href="@{/style.css}">
+</head>
+<body>
+<header>
+    <a class="brand" th:href="@{/}">🎾 FantaTennis</a>
+    <nav>
+        <a th:href="@{/}">หน้าแรก</a>
+        <a th:if="${username == null}" th:href="@{/register}">สมัคร</a>
+        <a th:if="${username == null}" th:href="@{/login}">เข้าสู่ระบบ</a>
+        <a th:if="${username != null}" th:href="@{/me}">บัญชีของฉัน</a>
+        <a th:if="${isGm}" th:href="@{/admin}">GM</a>
+        <form th:if="${username != null}" method="post" th:action="@{/logout}" class="inline">
+            <input type="hidden" name="_csrf" th:value="${csrf}">
+            <button type="submit" class="link">ออกจากระบบ</button>
+        </form>
+    </nav>
+</header>
+<main>
+    <th:block th:replace="${body}"></th:block>
+</main>
+</body>
+</html>

@@ -64,14 +64,15 @@ public abstract class AbstractRabbitMQConfiguration implements RabbitContract {
     public Declarables rabbitDeclarables() {
         List<Declarable> declarableList = new ArrayList<>();
 
-        Queue defaultQueue = new Queue(getQueueName(), false);
+        // durable: RabbitMQ 4.x removed transient non-exclusive queues (upstream targets 3.12)
+        Queue defaultQueue = new Queue(getQueueName(), true);
         declarableList.add(defaultQueue);
         for (String bindingKey : getBindingKeys()) {
             declarableList.add(BindingBuilder.bind(defaultQueue).to(exchange()).with(bindingKey));
         }
 
         for (RabbitQueueDefinition queueDefinition : getAdditionalQueues()) {
-            Queue queue = new Queue(queueDefinition.getQueueName(), false);
+            Queue queue = new Queue(queueDefinition.getQueueName(), true);
             declarableList.add(queue);
             for (String bindingKey : queueDefinition.getBindingKeys()) {
                 declarableList.add(BindingBuilder.bind(queue).to(exchange()).with(bindingKey));

@@ -9,6 +9,7 @@ import com.jftse.server.core.handler.PacketId;
 import com.jftse.server.core.service.ClientWhitelistService;
 import com.jftse.server.core.shared.packets.ac.CMSGAntiCheatClientRegister;
 import com.jftse.server.core.shared.packets.ac.SMSGAntiCheatClientRegister;
+import lombok.extern.log4j.Log4j2;
 
 import java.net.InetSocketAddress;
 import java.util.Arrays;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Log4j2
 @PacketId(CMSGAntiCheatClientRegister.PACKET_ID)
 public class ACClientRegisterHandler implements PacketHandler<FTConnection, CMSGAntiCheatClientRegister> {
     private final ClientWhitelistService clientWhitelistService;
@@ -27,6 +29,9 @@ public class ACClientRegisterHandler implements PacketHandler<FTConnection, CMSG
     @Override
     public void handle(FTConnection connection, CMSGAntiCheatClientRegister packet) {
         String str = packet.getStr();
+        // local change: log every entry the client agent reports, so res-files.txt can be generated
+        // from our own (modded) client instead of guessing the hash format
+        log.info("[AC-REGISTER] {}", str);
 
         InetSocketAddress inetSocketAddress = connection.getRemoteAddressTCP();
         if (inetSocketAddress != null) {

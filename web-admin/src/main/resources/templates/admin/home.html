@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page('GM', ~{::content})}" lang="th">
+<body>
+<div th:fragment="content" th:remove="tag">
+    <h1>แผงควบคุม GM</h1>
+    <p class="sub">ทุกการกระทำถูกบันทึกลงตาราง gamelog พร้อมชื่อ GM</p>
+
+    <div class="card">
+        <h2 style="margin-top:0">ค้นหาผู้เล่น</h2>
+        <form method="get" th:action="@{/admin/players}">
+            <label>ชื่อตัวละคร (เว้นว่าง = ดูทั้งหมด)</label>
+            <input name="q" placeholder="เช่น tester">
+            <button type="submit">ค้นหา</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top:0">ประวัติการใช้งานล่าสุด</h2>
+        <p class="muted" th:if="${recent.isEmpty()}">ยังไม่มี</p>
+        <table th:if="${!recent.isEmpty()}">
+            <tr><th>เมื่อ</th><th>รายการ</th></tr>
+            <tr th:each="l : ${recent}">
+                <td class="muted" th:text="${#dates.format(l.created, 'dd/MM HH:mm')}"></td>
+                <td th:text="${l.content}"></td>
+            </tr>
+        </table>
+    </div>
+</div>
+</body>
+</html>
