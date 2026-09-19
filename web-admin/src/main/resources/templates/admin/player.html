@@ -7,6 +7,7 @@
         <span th:text="'บัญชี: ' + ${account.username}"></span> ·
         <span th:text="'เลเวล ' + ${player.level}"></span> ·
         <span th:text="'เงิน ' + ${player.gold}"></span> ·
+        <span th:text="'C ' + ${balanceC}"></span> ·
         <span th:text="'AP ' + (${account.ap} ?: 0)"></span> ·
         <span th:text="'หัวใจ ' + (${player.couplePoints} ?: 0)"></span>
         <span class="badge" th:classappend="${playerTier.banned} ? 'banned' : (${playerTier.name() != 'NORMAL'} ? 'gm' : '')"

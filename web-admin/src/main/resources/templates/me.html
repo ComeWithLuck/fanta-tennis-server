@@ -8,7 +8,9 @@
               th:text="${playerTier.label}"></span>
         <span class="badge banned" th:if="${playerTier.banned}"
               th:text="${playerTier.label} + ': ' + (${account.banReason} ?: '-')"></span>
-        <span class="muted" th:text="'AP: ' + (${account.ap} ?: 0)"></span>
+        <span class="muted" th:text="'C: ' + ${balanceC}"></span> ·
+        <span class="muted" th:text="'AP: ' + (${account.ap} ?: 0)"></span> ·
+        <a th:href="@{/cash}">เติมเงิน / แลก AP</a>
     </p>
 
     <div class="row">

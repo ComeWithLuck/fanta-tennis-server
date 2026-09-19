@@ -6,6 +6,7 @@ import com.jftse.entities.database.model.pocket.PlayerPocket;
 import com.jftse.web.model.AccountTier;
 import com.jftse.web.service.AccountWebService;
 import com.jftse.web.service.AuditService;
+import com.jftse.web.service.CashService;
 import com.jftse.web.service.PlayerWebService;
 import com.jftse.web.service.TierService;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class AdminController {
     private final PlayerWebService players;
     private final TierService tiers;
     private final AuditService audit;
+    private final CashService cash;
 
     private AccountTier tier(HttpServletRequest request) {
         return Session.tier(request);
@@ -82,6 +84,7 @@ public class AdminController {
         model.addAttribute("player", player);
         model.addAttribute("account", account);
         model.addAttribute("playerTier", tiers.tierOf(account));
+        model.addAttribute("balanceC", account == null ? 0 : cash.balance(account.getId()));
         model.addAttribute("allTiers", List.of(AccountTier.NORMAL, AccountTier.STAFF, AccountTier.GM));
         model.addAttribute("inventory", players.inventory(player));
         model.addAttribute("staffMaxBanDays", STAFF_MAX_BAN_DAYS);

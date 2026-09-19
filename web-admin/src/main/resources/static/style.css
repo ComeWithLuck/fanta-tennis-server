@@ -31,8 +31,11 @@ header {
 nav { display: flex; gap: 16px; align-items: center; margin-left: auto; flex-wrap: wrap; }
 nav a, .link { color: var(--muted); text-decoration: none; }
 nav a:hover, .link:hover { color: var(--text); }
-.inline { display: inline; }
-button.link { background: none; border: 0; cursor: pointer; font: inherit; padding: 0; }
+/* the logout control is a form+button, not an <a>: make it sit on the same baseline as the links */
+nav form { display: flex; align-items: center; margin: 0; }
+.inline { display: inline-flex; align-items: center; }
+button.link { background: none; border: 0; cursor: pointer; font: inherit; line-height: inherit;
+              padding: 0; margin: 0; }
 
 main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 64px; }
 

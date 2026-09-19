@@ -3,6 +3,7 @@ package com.jftse.web.web;
 import com.jftse.entities.database.model.account.Account;
 import com.jftse.entities.database.model.player.Player;
 import com.jftse.web.service.AccountWebService;
+import com.jftse.web.service.CashService;
 import com.jftse.web.service.PlayerWebService;
 import com.jftse.web.service.TierService;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class PublicController {
     private final AccountWebService accounts;
     private final PlayerWebService players;
     private final TierService tiers;
+    private final CashService cash;
 
     @GetMapping("/")
     public String index() {
@@ -104,6 +106,7 @@ public class PublicController {
         model.addAttribute("account", account.get());
         model.addAttribute("characters", players.findByAccount(accountId));
         model.addAttribute("playerTier", tiers.tierOf(account.get()));
+        model.addAttribute("balanceC", cash.balance(accountId));
         return "me";
     }
 
@@ -128,6 +131,7 @@ public class PublicController {
             model.addAttribute("account", account);
             model.addAttribute("characters", players.findByAccount(accountId));
             model.addAttribute("playerTier", tiers.tierOf(account));
+            model.addAttribute("balanceC", cash.balance(accountId));
             model.addAttribute("error", error);
             return "me";
         }
