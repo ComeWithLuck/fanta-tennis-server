@@ -35,6 +35,8 @@ public class CashController {
         model.addAttribute("topUpMock", topUp.isMock());
         model.addAttribute("cPerBaht", CashService.C_PER_BAHT);
         model.addAttribute("apPerC", CashService.AP_PER_C);
+        // just illustrations: any whole-baht amount works, there are no fixed packages
+        model.addAttribute("examples", java.util.List.of(20, 50, 100, 300, 500));
     }
 
     @GetMapping("/cash")

@@ -91,3 +91,17 @@ td a { color: var(--accent); }
 .row > * { flex: 1 1 280px; }
 .muted { color: var(--muted); }
 code { background: #0e131a; padding: 1px 6px; border-radius: 5px; }
+
+/* top-up rate banner: the first thing a player should see on /cash */
+.rate {
+    display: flex; gap: 20px; flex-wrap: wrap; align-items: center;
+    background: linear-gradient(135deg, #15301d, #16212c);
+    border: 1px solid #2f5d3c; border-radius: 10px; padding: 16px 20px; margin-bottom: 14px;
+}
+.rate-main { display: flex; flex-direction: column; }
+.rate-big { font-size: 26px; font-weight: 700; color: var(--accent); }
+.rate-sub { color: var(--muted); font-size: 14px; }
+.rate-note { margin-left: auto; font-size: 14px; line-height: 1.7; }
+.rate-table { width: auto; margin: 0 0 18px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.rate-table th, .rate-table td { padding: 7px 16px; text-align: center; }
+.rate-table td:first-child, .rate-table th:first-child { color: var(--muted); text-align: left; }

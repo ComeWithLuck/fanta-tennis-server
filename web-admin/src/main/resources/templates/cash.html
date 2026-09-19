@@ -5,12 +5,27 @@
     <h1>เติมเงิน</h1>
     <p class="sub">
         <span th:text="'คงเหลือ ' + ${balanceC} + ' C'"></span> ·
-        <span th:text="'AP ' + (${account.ap} ?: 0)"></span> ·
-        <span class="muted" th:text="'อัตรา 1 บาท = ' + ${cPerBaht} + ' C · 1 C = ' + ${apPerC} + ' AP'"></span>
+        <span th:text="'AP ' + (${account.ap} ?: 0)"></span>
     </p>
 
     <div class="error" th:if="${error}" th:text="${error}"></div>
     <div class="ok" th:if="${ok}" th:text="${ok}"></div>
+
+    <div class="rate">
+        <div class="rate-main">
+            <span class="rate-big" th:text="'1 บาท = ' + ${cPerBaht} + ' C'">1 บาท = 10 C</span>
+            <span class="rate-sub" th:text="'และ 1 C = ' + ${apPerC} + ' AP (สกุลที่ใช้ซื้อของในร้าน)'"></span>
+        </div>
+        <div class="rate-note">
+            <b>กำหนดยอดเองได้ ไม่มีแพ็กตายตัว</b><br>
+            สร้างซองยอดเท่าไหร่ก็ได้ ขอเป็น<b>จำนวนเต็มบาท</b> (ไม่มีเศษสตางค์)
+        </div>
+    </div>
+
+    <table class="rate-table">
+        <tr><th>เติม</th><th th:each="e : ${examples}" th:text="${e} + ' บาท'"></th></tr>
+        <tr><td>ได้รับ</td><td th:each="e : ${examples}" th:text="${#numbers.formatInteger(e * cPerBaht, 1, 'COMMA')} + ' C'"></td></tr>
+    </table>
 
     <div class="row">
         <div class="card">
@@ -26,13 +41,18 @@
                     <input name="link" placeholder="https://gift.truemoney.com/campaign/?v=..." required>
                     <button type="submit">เติมเงิน</button>
                 </form>
-                <details style="margin-top:14px">
-                    <summary class="muted">วิธีสร้างซอง</summary>
-                    <ol class="muted" style="font-size:13px">
-                        <li>เปิดแอป TrueMoney → ซองของขวัญ → ใส่ยอดเป็นจำนวนบาทเต็ม</li>
-                        <li>ตั้งเป็น <b>ส่งให้ 1 คน</b> เท่านั้น</li>
-                        <li>คัดลอกลิงก์มาวางที่นี่ — อย่าส่งลิงก์ให้ใครก่อน เพราะใครถือลิงก์ก็กดรับได้</li>
+                <details style="margin-top:14px" open>
+                    <summary>วิธีสร้างซอง</summary>
+                    <ol style="font-size:14px; padding-left:20px">
+                        <li>เปิดแอป TrueMoney → <b>ซองของขวัญ</b></li>
+                        <li><b>ใส่ยอดที่ต้องการเติม</b> เป็นจำนวนเต็มบาท เช่น 50 บาท จะได้
+                            <b th:text="${50 * cPerBaht} + ' C'">500 C</b></li>
+                        <li>ตั้งเป็น <b>ส่งให้ 1 คน</b> เท่านั้น (ถ้าตั้งหลายคน ระบบจะไม่รับ)</li>
+                        <li>คัดลอกลิงก์มาวางที่นี่ — <b>อย่าส่งลิงก์ให้ใครก่อน</b> เพราะใครถือลิงก์ก็กดรับได้</li>
                     </ol>
+                    <p class="muted" style="font-size:13px">
+                        ถ้าซองมีปัญหา เงินจะไม่ถูกหัก ซองยังเป็นของคุณและกดรับคืนได้ในแอป
+                    </p>
                 </details>
             </div>
         </div>
@@ -40,15 +60,23 @@
         <div class="card">
             <h2 style="margin-top:0">แลก C เป็น AP</h2>
             <div class="error" th:if="${online}">คุณกำลังออนไลน์อยู่ในเกม — ออกจากเกมก่อนจึงจะแลกได้</div>
+            <div class="muted" th:if="${balanceC == 0 and !online}" style="margin-bottom:8px">
+                ยังไม่มี C — เติมเงินทางด้านซ้ายก่อน
+            </div>
             <form method="post" th:action="@{/cash/exchange}">
                 <input type="hidden" name="_csrf" th:value="${csrf}">
-                <label>จำนวน C</label>
-                <input name="amount" type="number" min="1" th:max="${balanceC}" value="100" required
-                       th:disabled="${online or balanceC == 0}">
-                <button type="submit" th:disabled="${online or balanceC == 0}">แลกเป็น AP</button>
+                <label th:text="'จำนวน C (มีอยู่ ' + ${balanceC} + ')'">จำนวน C</label>
+                <!-- no max when the balance is 0: an input with max="0" refuses every keystroke -->
+                <input id="amount" name="amount" type="number" min="1"
+                       th:attr="max=${balanceC > 0 ? balanceC : null}"
+                       th:value="${balanceC > 0 ? (balanceC < 100 ? balanceC : 100) : 100}" required>
+                <button type="button" class="secondary" style="margin-right:8px"
+                        th:attr="onclick='document.getElementById(\'amount\').value=' + ${balanceC}"
+                        th:if="${balanceC > 0}">ใส่ทั้งหมด</button>
+                <button type="submit" th:disabled="${online}">แลกเป็น AP</button>
             </form>
             <p class="muted" style="font-size:13px">
-                AP คือสกุลที่ใช้ซื้อของในร้าน (แสดงเป็น Mint ในเกม) · แลกแล้วเปลี่ยนกลับไม่ได้
+                AP คือสกุลที่ใช้ซื้อของในร้าน (ในเกมแสดงเป็น Mint) · แลกแล้วเปลี่ยนกลับไม่ได้
             </p>
         </div>
     </div>
