@@ -9,8 +9,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Calendar;
-import java.util.Date;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -67,7 +65,7 @@ public class AccountWebService {
         account.setPassword(encode(password));
         account.setEmail(email == null || email.isBlank() ? null : email.trim());
         account.setActive(true);
-        account.setStatus(1);
+        account.setStatus(0);                 // what auth-server writes back after an expired ban
         account.setAp(0);
         account.setGameMaster(false);
         account.setBanned(false);
@@ -79,32 +77,6 @@ public class AccountWebService {
     @Transactional
     public void changePassword(Account account, String newPassword) {
         account.setPassword(encode(newPassword));
-        accountRepository.save(account);
-    }
-
-    /** Mirrors the in-game -ban command: blocked status + reason + an expiry date. */
-    @Transactional
-    public void ban(Account account, String reason, int days) {
-        account.setStatus(3);                 // AuthenticationServiceImpl.ACCOUNT_BLOCKED_USER_ID
-        account.setBanned(true);
-        account.setBanReason(reason);
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(new Date());
-        cal.add(Calendar.DAY_OF_YEAR, days);
-        cal.set(Calendar.HOUR_OF_DAY, 0);
-        cal.set(Calendar.MINUTE, 0);
-        cal.set(Calendar.SECOND, 0);
-        cal.set(Calendar.MILLISECOND, 0);
-        account.setBannedUntil(cal.getTime());
-        accountRepository.save(account);
-    }
-
-    @Transactional
-    public void unban(Account account) {
-        account.setStatus(1);
-        account.setBanned(false);
-        account.setBanReason(null);
-        account.setBannedUntil(null);
         accountRepository.save(account);
     }
 

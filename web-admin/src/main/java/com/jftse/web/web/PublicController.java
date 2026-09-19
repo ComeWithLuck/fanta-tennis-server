@@ -4,6 +4,7 @@ import com.jftse.entities.database.model.account.Account;
 import com.jftse.entities.database.model.player.Player;
 import com.jftse.web.service.AccountWebService;
 import com.jftse.web.service.PlayerWebService;
+import com.jftse.web.service.TierService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -19,17 +20,15 @@ import java.util.Optional;
 public class PublicController {
     private final AccountWebService accounts;
     private final PlayerWebService players;
+    private final TierService tiers;
 
     @GetMapping("/")
-    public String index(HttpServletRequest request, Model model) {
-        model.addAttribute("username", Session.username(request));
-        model.addAttribute("isGm", Session.isGm(request));
+    public String index() {
         return "index";
     }
 
     @GetMapping("/register")
-    public String registerForm(HttpServletRequest request, Model model) {
-        model.addAttribute("csrf", Session.csrf(request));
+    public String registerForm() {
         return "register";
     }
 
@@ -40,8 +39,7 @@ public class PublicController {
                            @RequestParam(required = false) String email,
                            @RequestParam(name = "_csrf", required = false) String csrf) {
         Session.requireCsrf(request, csrf);
-        model.addAttribute("csrf", Session.csrf(request));
-        model.addAttribute("username", username);
+        model.addAttribute("form", username);
 
         String error = validate(username, password, password2);
         if (error == null && accounts.findByUsername(username).isPresent())
@@ -51,7 +49,7 @@ public class PublicController {
             return "register";
         }
         Account account = accounts.register(username, password, email);
-        Session.login(request, account);
+        Session.login(request, account, tiers.tierOf(account));
         return "redirect:/me";
     }
 
@@ -67,8 +65,7 @@ public class PublicController {
     }
 
     @GetMapping("/login")
-    public String loginForm(HttpServletRequest request, Model model) {
-        model.addAttribute("csrf", Session.csrf(request));
+    public String loginForm() {
         return "login";
     }
 
@@ -79,11 +76,10 @@ public class PublicController {
         Session.requireCsrf(request, csrf);
         Optional<Account> account = accounts.findByUsername(username);
         if (account.isEmpty() || !accounts.passwordMatches(account.get(), password)) {
-            model.addAttribute("csrf", Session.csrf(request));
             model.addAttribute("error", "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
             return "login";
         }
-        Session.login(request, account.get());
+        Session.login(request, account.get(), tiers.tierOf(account.get()));
         return "redirect:/me";
     }
 
@@ -105,11 +101,9 @@ public class PublicController {
             Session.logout(request);
             return "redirect:/login";
         }
-        List<Player> characters = players.findByAccount(accountId);
         model.addAttribute("account", account.get());
-        model.addAttribute("characters", characters);
-        model.addAttribute("isGm", Session.isGm(request));
-        model.addAttribute("csrf", Session.csrf(request));
+        model.addAttribute("characters", players.findByAccount(accountId));
+        model.addAttribute("playerTier", tiers.tierOf(account.get()));
         return "me";
     }
 
@@ -133,8 +127,7 @@ public class PublicController {
         if (error != null) {
             model.addAttribute("account", account);
             model.addAttribute("characters", players.findByAccount(accountId));
-            model.addAttribute("isGm", Session.isGm(request));
-            model.addAttribute("csrf", Session.csrf(request));
+            model.addAttribute("playerTier", tiers.tierOf(account));
             model.addAttribute("error", error);
             return "me";
         }

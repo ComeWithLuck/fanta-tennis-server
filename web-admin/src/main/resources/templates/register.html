@@ -8,7 +8,7 @@
         <form method="post" th:action="@{/register}">
             <input type="hidden" name="_csrf" th:value="${csrf}">
             <label>ชื่อผู้ใช้ (ใช้ล็อกอินในเกม)</label>
-            <input name="username" th:value="${username}" autocomplete="username" required>
+            <input name="username" th:value="${form}" autocomplete="username" required>
             <label>รหัสผ่าน</label>
             <input name="password" type="password" autocomplete="new-password" required>
             <label>ยืนยันรหัสผ่าน</label>

@@ -4,8 +4,10 @@
 <div th:fragment="content" th:remove="tag">
     <h1 th:text="${account.username}">บัญชี</h1>
     <p class="sub">
-        <span class="badge gm" th:if="${account.gameMaster}">GM</span>
-        <span class="badge banned" th:if="${account.banned}" th:text="'ถูกแบน: ' + (${account.banReason} ?: '-')"></span>
+        <span class="badge gm" th:if="${playerTier.name() == 'GM' or playerTier.name() == 'STAFF'}"
+              th:text="${playerTier.label}"></span>
+        <span class="badge banned" th:if="${playerTier.banned}"
+              th:text="${playerTier.label} + ': ' + (${account.banReason} ?: '-')"></span>
         <span class="muted" th:text="'AP: ' + (${account.ap} ?: 0)"></span>
     </p>
 

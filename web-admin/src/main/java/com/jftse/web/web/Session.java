@@ -1,17 +1,18 @@
 package com.jftse.web.web;
 
 import com.jftse.entities.database.model.account.Account;
+import com.jftse.web.model.AccountTier;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import java.security.SecureRandom;
 import java.util.Base64;
 
-/** Session helpers: who is logged in, and a per-session CSRF token for every POST form. */
+/** Session helpers: who is logged in, which tier they are, and a per-session CSRF token for POST forms. */
 public final class Session {
     public static final String ACCOUNT_ID = "accountId";
     public static final String USERNAME = "username";
-    public static final String IS_GM = "isGm";
+    public static final String TIER = "tier";
     public static final String CSRF = "csrf";
 
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -19,14 +20,14 @@ public final class Session {
     private Session() {
     }
 
-    public static void login(HttpServletRequest request, Account account) {
+    public static void login(HttpServletRequest request, Account account, AccountTier tier) {
         HttpSession old = request.getSession(false);
         if (old != null)
             old.invalidate();                       // new session id on login
         HttpSession session = request.getSession(true);
         session.setAttribute(ACCOUNT_ID, account.getId());
         session.setAttribute(USERNAME, account.getUsername());
-        session.setAttribute(IS_GM, Boolean.TRUE.equals(account.getGameMaster()));
+        session.setAttribute(TIER, tier);
         session.setAttribute(CSRF, newToken());
         session.setMaxInactiveInterval(60 * 60 * 8);
     }
@@ -47,9 +48,17 @@ public final class Session {
         return session == null ? null : (String) session.getAttribute(USERNAME);
     }
 
-    public static boolean isGm(HttpServletRequest request) {
+    /** Never null: a visitor with no session counts as NORMAL, which may do nothing in /admin. */
+    public static AccountTier tier(HttpServletRequest request) {
         HttpSession session = request.getSession(false);
-        return session != null && Boolean.TRUE.equals(session.getAttribute(IS_GM));
+        Object tier = session == null ? null : session.getAttribute(TIER);
+        return tier instanceof AccountTier t ? t : AccountTier.NORMAL;
+    }
+
+    public static void refreshTier(HttpServletRequest request, AccountTier tier) {
+        HttpSession session = request.getSession(false);
+        if (session != null)
+            session.setAttribute(TIER, tier);
     }
 
     public static String csrf(HttpServletRequest request) {

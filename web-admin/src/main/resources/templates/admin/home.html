@@ -3,7 +3,14 @@
 <body>
 <div th:fragment="content" th:remove="tag">
     <h1>แผงควบคุม GM</h1>
-    <p class="sub">ทุกการกระทำถูกบันทึกลงตาราง gamelog พร้อมชื่อ GM</p>
+    <p class="sub">
+        ทุกการกระทำถูกบันทึกลงตาราง gamelog พร้อมชื่อผู้ทำ ·
+        <span th:text="'สิทธิ์ของคุณ: ' + ${tier.label}"></span>
+    </p>
+    <div class="card" th:if="${!isGm}">
+        ทีมงานทำได้: ค้นหา/ดูผู้เล่น · แบนชั่วคราวไม่เกิน <span th:text="${staffMaxBanDays}"></span> วัน · ปลดแบนชั่วคราว<br>
+        <span class="muted">แจกของ แจกเงิน แบนถาวร และเปลี่ยนระดับบัญชี ต้องเป็น GM</span>
+    </div>
 
     <div class="card">
         <h2 style="margin-top:0">ค้นหาผู้เล่น</h2>

@@ -13,4 +13,15 @@ public class ErrorAdvice {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body("คำขอไม่ถูกต้อง (" + e.getMessage() + ") — กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง");
     }
+
+    /** A moderator tried something only a GM may do. */
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<String> forbidden(SecurityException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("ไม่มีสิทธิ์: " + e.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> illegalArgument(IllegalArgumentException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("ค่าไม่ถูกต้อง: " + e.getMessage());
+    }
 }

@@ -7,47 +7,78 @@
         <span th:text="'บัญชี: ' + ${account.username}"></span> ·
         <span th:text="'เลเวล ' + ${player.level}"></span> ·
         <span th:text="'เงิน ' + ${player.gold}"></span> ·
-        <span th:text="'AP ' + (${account.ap} ?: 0)"></span>
-        <span class="badge banned" th:if="${account.banned}"
-              th:text="'ถูกแบนถึง ' + (${account.bannedUntil} != null ? ${#dates.format(account.bannedUntil, 'dd/MM/yyyy')} : '-')"></span>
+        <span th:text="'AP ' + (${account.ap} ?: 0)"></span> ·
+        <span th:text="'หัวใจ ' + (${player.couplePoints} ?: 0)"></span>
+        <span class="badge" th:classappend="${playerTier.banned} ? 'banned' : (${playerTier.name() != 'NORMAL'} ? 'gm' : '')"
+              th:text="${playerTier.label}"></span>
+        <span class="muted" th:if="${playerTier.name() == 'SOFTBAN'}"
+              th:text="'ถึง ' + ${#dates.format(account.bannedUntil, 'dd/MM/yyyy')}"></span>
     </p>
 
     <div class="row">
         <div class="card">
-            <h2 style="margin-top:0">แบน / ปลดแบน</h2>
+            <h2 style="margin-top:0">แบน</h2>
             <form method="post" th:action="@{'/admin/player/' + ${player.id} + '/ban'}">
                 <input type="hidden" name="_csrf" th:value="${csrf}">
                 <label>เหตุผล</label>
                 <input name="reason" required>
-                <label>จำนวนวัน</label>
+                <label>จำนวนวัน (แบนชั่วคราว)</label>
                 <input name="days" type="number" value="7" min="1" max="3650" required>
-                <button type="submit" class="danger">แบน</button>
+                <button type="submit" class="danger">แบนชั่วคราว</button>
             </form>
-            <form method="post" th:action="@{'/admin/player/' + ${player.id} + '/unban'}" th:if="${account.banned}">
+            <form method="post" th:action="@{'/admin/player/' + ${player.id} + '/ban'}" th:if="${isGm}">
+                <input type="hidden" name="_csrf" th:value="${csrf}">
+                <input type="hidden" name="permanent" value="true">
+                <label>เหตุผล (แบนถาวร)</label>
+                <input name="reason" required>
+                <button type="submit" class="danger">แบนถาวร</button>
+            </form>
+            <form method="post" th:action="@{'/admin/player/' + ${player.id} + '/unban'}" th:if="${playerTier.banned}">
                 <input type="hidden" name="_csrf" th:value="${csrf}">
                 <button type="submit" class="secondary">ปลดแบน</button>
             </form>
-            <p class="muted" style="font-size:13px">แบนมีผลตอนล็อกอินครั้งถัดไป · ถ้าผู้เล่นออนไลน์อยู่ ให้เตะด้วยคำสั่ง <code>-serverKick</code> ในเกม</p>
+            <p class="muted" style="font-size:13px">
+                แบนชั่วคราวหมดอายุเอง (เซิร์ฟปลดให้ตอนล็อกอินครั้งถัดไป) · แบนถาวรไม่หมดอายุ<br>
+                <span th:if="${!isGm}" th:text="'ทีมงานแบนได้สูงสุด ' + ${staffMaxBanDays} + ' วัน และแบนถาวร/ปลดแบนถาวรไม่ได้'"></span>
+                ถ้าผู้เล่นออนไลน์อยู่ ให้เตะด้วย <code>-serverKick</code> ในเกม
+            </p>
         </div>
 
-        <div class="card">
+        <div class="card" th:if="${isGm}">
+            <h2 style="margin-top:0">ระดับบัญชี</h2>
+            <form method="post" th:action="@{'/admin/player/' + ${player.id} + '/tier'}">
+                <input type="hidden" name="_csrf" th:value="${csrf}">
+                <label>เปลี่ยนเป็น</label>
+                <select name="tier">
+                    <option th:each="t : ${allTiers}" th:value="${t.name()}" th:text="${t.label}"
+                            th:selected="${t.name() == playerTier.name()}"></option>
+                </select>
+                <button type="submit">บันทึก</button>
+            </form>
+            <p class="muted" style="font-size:13px">
+                ทีมงาน = ค้นหา/ดูผู้เล่น + แบนชั่วคราวได้ไม่เกิน <span th:text="${staffMaxBanDays}"></span> วัน<br>
+                GM = ทำได้ทุกอย่าง รวมถึงแจกของและใช้คำสั่ง GM ในเกม
+            </p>
+        </div>
+
+        <div class="card" th:if="${isGm}">
             <h2 style="margin-top:0">แจกเงิน / AP</h2>
             <form method="post" th:action="@{'/admin/player/' + ${player.id} + '/give-gold'}">
                 <input type="hidden" name="_csrf" th:value="${csrf}">
-                <label>เงิน (ใส่ค่าติดลบเพื่อหัก)</label>
+                <label>เงินในเกม (ติดลบ = หัก)</label>
                 <input name="amount" type="number" value="10000" required>
                 <button type="submit">ให้เงิน</button>
             </form>
             <form method="post" th:action="@{'/admin/player/' + ${player.id} + '/give-ap'}">
                 <input type="hidden" name="_csrf" th:value="${csrf}">
-                <label>AP</label>
+                <label>AP (Mint ในร้านค้า)</label>
                 <input name="amount" type="number" value="1000" required>
                 <button type="submit">ให้ AP</button>
             </form>
         </div>
     </div>
 
-    <div class="card">
+    <div class="card" th:if="${isGm}">
         <h2 style="margin-top:0">แจกไอเทม</h2>
         <form method="get" th:action="@{'/admin/player/' + ${player.id}}">
             <label>ค้นหาไอเทมในร้าน (ชื่อ หรือหมายเลขสินค้า)</label>

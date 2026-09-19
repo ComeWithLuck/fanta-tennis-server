@@ -21,8 +21,11 @@
                 <td th:text="${p.gold}"></td>
                 <td th:text="${p.account != null ? p.account.username : '-'}"></td>
                 <td>
-                    <span class="badge banned" th:if="${p.account != null and p.account.banned}">แบน</span>
-                    <span class="badge gm" th:if="${p.account != null and p.account.gameMaster}">GM</span>
+                    <span class="badge"
+                          th:with="t=${p.account != null ? tierByAccount.get(p.account.id) : null}"
+                          th:if="${t != null and t.name() != 'NORMAL'}"
+                          th:classappend="${t.banned} ? 'banned' : 'gm'"
+                          th:text="${t.label}"></span>
                 </td>
             </tr>
         </table>
