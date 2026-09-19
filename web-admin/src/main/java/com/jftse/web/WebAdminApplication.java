@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -14,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
  * database and entity classes, so anything it writes is exactly what the game servers read.
  */
 @SpringBootApplication
+@EnableAsync                     // Telegram notifications must never hold up a top-up
 @EntityScan(basePackages = "com.jftse.entities")
 @EnableJpaRepositories(basePackages = "com.jftse.entities")
 // com.jftse.server.core.service brings InventoryService & friends, so giving an item goes through the

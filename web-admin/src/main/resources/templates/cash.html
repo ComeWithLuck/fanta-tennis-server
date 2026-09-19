@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page('เติมเงิน', ~{::content})}" lang="th">
+<body>
+<div th:fragment="content" th:remove="tag">
+    <h1>เติมเงิน</h1>
+    <p class="sub">
+        <span th:text="'คงเหลือ ' + ${balanceC} + ' C'"></span> ·
+        <span th:text="'AP ' + (${account.ap} ?: 0)"></span> ·
+        <span class="muted" th:text="'อัตรา 1 บาท = ' + ${cPerBaht} + ' C · 1 C = ' + ${apPerC} + ' AP'"></span>
+    </p>
+
+    <div class="error" th:if="${error}" th:text="${error}"></div>
+    <div class="ok" th:if="${ok}" th:text="${ok}"></div>
+
+    <div class="row">
+        <div class="card">
+            <h2 style="margin-top:0">เติมด้วยซองของขวัญ TrueMoney</h2>
+            <p class="muted" th:if="${!topUpEnabled}">ระบบเติมเงินยังไม่เปิด</p>
+            <div th:if="${topUpEnabled}">
+                <div class="ok" th:if="${topUpMock}" style="margin-bottom:10px">
+                    โหมดทดสอบ: ใช้ลิงก์ <code>?v=MOCK50xxxxxxxxxxxxxxxxxxxx</code> = ซอง 50 บาท
+                </div>
+                <form method="post" th:action="@{/cash/topup}">
+                    <input type="hidden" name="_csrf" th:value="${csrf}">
+                    <label>วางลิงก์ซองของขวัญ</label>
+                    <input name="link" placeholder="https://gift.truemoney.com/campaign/?v=..." required>
+                    <button type="submit">เติมเงิน</button>
+                </form>
+                <details style="margin-top:14px">
+                    <summary class="muted">วิธีสร้างซอง</summary>
+                    <ol class="muted" style="font-size:13px">
+                        <li>เปิดแอป TrueMoney → ซองของขวัญ → ใส่ยอดเป็นจำนวนบาทเต็ม</li>
+                        <li>ตั้งเป็น <b>ส่งให้ 1 คน</b> เท่านั้น</li>
+                        <li>คัดลอกลิงก์มาวางที่นี่ — อย่าส่งลิงก์ให้ใครก่อน เพราะใครถือลิงก์ก็กดรับได้</li>
+                    </ol>
+                </details>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-top:0">แลก C เป็น AP</h2>
+            <div class="error" th:if="${online}">คุณกำลังออนไลน์อยู่ในเกม — ออกจากเกมก่อนจึงจะแลกได้</div>
+            <form method="post" th:action="@{/cash/exchange}">
+                <input type="hidden" name="_csrf" th:value="${csrf}">
+                <label>จำนวน C</label>
+                <input name="amount" type="number" min="1" th:max="${balanceC}" value="100" required
+                       th:disabled="${online or balanceC == 0}">
+                <button type="submit" th:disabled="${online or balanceC == 0}">แลกเป็น AP</button>
+            </form>
+            <p class="muted" style="font-size:13px">
+                AP คือสกุลที่ใช้ซื้อของในร้าน (แสดงเป็น Mint ในเกม) · แลกแล้วเปลี่ยนกลับไม่ได้
+            </p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top:0">ประวัติ C</h2>
+        <p class="muted" th:if="${history.isEmpty()}">ยังไม่มีรายการ</p>
+        <table th:if="${!history.isEmpty()}">
+            <tr><th>เมื่อ</th><th>ประเภท</th><th>จำนวน</th><th>รายละเอียด</th></tr>
+            <tr th:each="h : ${history}">
+                <td class="muted" th:text="${#dates.format(h.created, 'dd/MM HH:mm')}"></td>
+                <td th:text="${h.kind}"></td>
+                <td th:text="(${h.delta_c} > 0 ? '+' : '') + ${h.delta_c} + ' C'"></td>
+                <td th:text="${h.detail}"></td>
+            </tr>
+        </table>
+    </div>
+</div>
+</body>
+</html>
