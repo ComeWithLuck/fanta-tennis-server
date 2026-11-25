@@ -1,10 +1,12 @@
 package com.jftse.emulator.server.core.handler.matchplay;
 
+import com.jftse.emulator.server.core.life.room.RoomBetting;
 import com.jftse.emulator.server.core.client.PetView;
 import com.jftse.emulator.server.core.constants.MiscConstants;
 import com.jftse.emulator.server.core.constants.RoomStatus;
 import com.jftse.emulator.server.core.life.room.GameSession;
 import com.jftse.emulator.server.core.life.room.Room;
+import com.jftse.emulator.server.core.life.room.RoomAccessPolicy;
 import com.jftse.emulator.server.core.life.room.RoomPlayer;
 import com.jftse.emulator.server.core.manager.GameManager;
 import com.jftse.emulator.server.core.manager.ServiceManager;
@@ -65,8 +67,20 @@ public class RoomStartGamePacketHandler implements PacketHandler<FTConnection, C
         }
 
         synchronized (room) {
-            if (room.getStatus() != RoomStatus.NotRunning) {
-                connection.sendTCP(roomStartGameAck);
+            // The refusal reason as the native 0x17E6 code (4cc6d0 shows -1 / -2 / -3 / -4 / -5 as room texts); 0 stays silent.
+            short refusal = RoomAccessPolicy.startRefusal(ftClient, room);
+            if (refusal != RoomAccessPolicy.START_ALLOWED) {
+                Packet refused = new Packet(PacketOperations.S2CRoomStartGameAck);
+                refused.write((char) refusal);
+                connection.sendTCP(refused);
+                return;
+            }
+            // A betting room needs a bettor on each side: -11 -> MSG_NO_BETTING_USER (0x4cc8e8; RoomBetting, notes-v179).
+            short betting = RoomBetting.startCheck(room);
+            if (betting != 0) {
+                Packet refused = new Packet(PacketOperations.S2CRoomStartGameAck);
+                refused.write((char) betting);
+                connection.sendTCP(refused);
                 return;
             }
 
@@ -83,7 +97,12 @@ public class RoomStartGamePacketHandler implements PacketHandler<FTConnection, C
         gameSession.setPlayers(room.getPlayers());
         MatchplayGame game;
         switch (room.getMode()) {
-            case GameMode.BASIC -> game = new MatchplayBasicGame(room.getPlayers());
+            case GameMode.BASIC -> {
+                // notes-v402: the room rule (GuiPop_MakeRoom cmSubMode, Basic / Pet Basic only): 0 Short Match, 1 Tie Match.
+                MatchplayBasicGame basicGame = new MatchplayBasicGame(room.getPlayers());
+                basicGame.setRule(room.getRule() == 1 ? (byte) 1 : (byte) 0);
+                game = basicGame;
+            }
             case GameMode.BATTLE -> game = new MatchplayBattleGame(room.getPlayers());
             case GameMode.GUARDIAN -> game = new MatchplayGuardianGame();
             default -> throw new IllegalStateException("room mode not supported: " + room.getMode());
@@ -109,10 +128,12 @@ public class RoomStartGamePacketHandler implements PacketHandler<FTConnection, C
 
         int initialRoomPlayerSize = room.getRoomPlayerList().size();
 
-        ThreadManager.getInstance().schedule(() -> {
+        var relayTask = ThreadManager.getInstance().schedule(() -> {
             Room threadRoom = ftClient.getActiveRoom();
+            if (threadRoom != room || ftClient.getActiveGameSession() != gameSession) return;
             if (threadRoom != null) {
                 while (threadRoom.getStatus() != RoomStatus.RelayConnectionSuccess) {
+                    if (ftClient.getActiveRoom() != room || ftClient.getActiveGameSession() != gameSession) return;
                     boolean allReady = threadRoom.getRoomPlayerList().stream()
                             .filter(rp -> !rp.isMaster())
                             .collect(Collectors.toList())
@@ -123,6 +144,7 @@ public class RoomStartGamePacketHandler implements PacketHandler<FTConnection, C
                     boolean roomPlayerSizeChanged = initialRoomPlayerSize != threadRoom.getRoomPlayerList().size();
 
                     synchronized (threadRoom) {
+                        if (ftClient.getActiveGameSession() != gameSession) return;
                         if (!allReady || roomPlayerSizeChanged || threadRoom.getStatus() == RoomStatus.StartCancelled || threadRoom.getStatus() == RoomStatus.RelayConnectionFailed) {
                             threadRoom.setStatus(RoomStatus.NotRunning);
                             SMSGCancelStartGame cancelStartGamePacket = SMSGCancelStartGame.builder().result((char) 0).build();
@@ -175,10 +197,13 @@ public class RoomStartGamePacketHandler implements PacketHandler<FTConnection, C
                     try {
                         TimeUnit.MILLISECONDS.sleep(1000);
                     } catch (InterruptedException e) {
-                        log.error("Error while waiting for relay connection success", e);
+                        Thread.currentThread().interrupt();
+                        return;
                     }
                 }
             }
+
+            if (ftClient.getActiveRoom() != room || ftClient.getActiveGameSession() != gameSession) return;
 
             RoomPlayer playerInSlot0 = room.getRoomPlayerList().stream()
                     .filter(x -> x.getPosition() == 0)
@@ -187,6 +212,7 @@ public class RoomStartGamePacketHandler implements PacketHandler<FTConnection, C
                     .filter(x -> playerInSlot0 != null && x.hasPlayer() && x.getPlayer().getId() == playerInSlot0.getPlayerId())
                     .findFirst()
                     .orElse(connection.getClient());
+            gameSession.setHostClient(clientToHostGame);
             SMSGSetHost setHostPacket = SMSGSetHost.builder().result((byte) 1).build();
             clientToHostGame.getConnection().sendTCP(setHostPacket);
 
@@ -202,5 +228,6 @@ public class RoomStartGamePacketHandler implements PacketHandler<FTConnection, C
             }
             GameManager.getInstance().sendPacketToAllClientsInSameGameSession(startGamePacket, ftClient.getConnection());
         }, 0, TimeUnit.SECONDS);
+        game.getScheduledFutures().add(relayTask);
     }
 }

@@ -2,6 +2,7 @@ package com.jftse.emulator.server.core.handler.lobby.room;
 
 import com.jftse.emulator.common.utilities.StringUtils;
 import com.jftse.emulator.server.core.life.room.Room;
+import com.jftse.emulator.server.core.life.room.RoomAccessPolicy;
 import com.jftse.emulator.server.core.manager.GameManager;
 import com.jftse.emulator.server.core.packets.lobby.room.S2CRoomInformationPacket;
 import com.jftse.emulator.server.net.FTClient;
@@ -19,13 +20,12 @@ public class RoomIsPrivateChangePacketHandler implements PacketHandler<FTConnect
         String password = packet.getPassword();
         Room room = client.getActiveRoom();
         if (room != null) {
-            if (StringUtils.isEmpty(password)) {
-                synchronized (room) {
+            synchronized (room) {
+                if (!RoomAccessPolicy.mayConfigure(client, room)) return;
+                if (StringUtils.isEmpty(password)) {
                     room.setPassword(null);
                     room.setPrivate(false);
-                }
-            } else {
-                synchronized (room) {
+                } else {
                     room.setPassword(password);
                     room.setPrivate(true);
                 }

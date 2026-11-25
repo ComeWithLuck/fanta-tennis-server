@@ -16,6 +16,7 @@ import com.jftse.emulator.server.net.FTConnection;
 import com.jftse.entities.database.model.guild.Guild;
 import com.jftse.entities.database.model.guild.GuildMember;
 import com.jftse.entities.database.model.home.AccountHome;
+import com.jftse.entities.database.model.player.BattlemonSlotEquipment;
 import com.jftse.entities.database.model.pet.Pet;
 import com.jftse.entities.database.model.player.Player;
 import com.jftse.entities.database.model.player.PlayerStatistic;
@@ -43,6 +44,7 @@ public class GameServerDataRequestPacketHandler implements PacketHandler<FTConne
     private final PocketService pocketService;
     private final PlayerStatisticService playerStatisticService;
     private final PlayerService playerService;
+    private final BattlemonSlotEquipmentService battlemonSlotEquipmentService;
 
     public GameServerDataRequestPacketHandler() {
         homeService = ServiceManager.getInstance().getHomeService();
@@ -52,6 +54,7 @@ public class GameServerDataRequestPacketHandler implements PacketHandler<FTConne
         pocketService = ServiceManager.getInstance().getPocketService();
         playerStatisticService = ServiceManager.getInstance().getPlayerStatisticService();
         playerService = ServiceManager.getInstance().getPlayerService();
+        battlemonSlotEquipmentService = ServiceManager.getInstance().getBattlemonSlotEquipmentService();
     }
 
     @Override
@@ -118,7 +121,10 @@ public class GameServerDataRequestPacketHandler implements PacketHandler<FTConne
         } else if (requestType == 3) {
             PlayerStatistic playerStatistic = playerStatisticService.findPlayerStatisticById(player.getPlayerStatisticId());
             player.setPlayerStatistic(PlayerStatisticView.fromEntity(playerStatistic));
-            player.setPetSlots(EquippedPetSlots.defaultSlots());
+            // The saved pet item slots (InventoryWearBattlemonPacketHandler), or none before the first equip.
+            BattlemonSlotEquipment petSlotRow = battlemonSlotEquipmentService.findByPlayerId(player.getId());
+            player.setPetSlots(petSlotRow == null ? EquippedPetSlots.defaultSlots()
+                    : new EquippedPetSlots(petSlotRow.getId(), petSlotRow.getSlot1(), petSlotRow.getSlot2()));
 
             S2CPlayerInfoPlayStatsPacket playerInfoPlayStatsPacket = new S2CPlayerInfoPlayStatsPacket(playerStatistic);
             S2CInventoryWearClothAnswerPacket inventoryWearClothAnswerPacket = new S2CInventoryWearClothAnswerPacket((char) 0, player);

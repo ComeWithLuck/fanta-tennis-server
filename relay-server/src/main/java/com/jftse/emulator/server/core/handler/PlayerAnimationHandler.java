@@ -18,6 +18,7 @@ public class PlayerAnimationHandler implements PacketHandler<FTConnection, CMSGP
 
     @Override
     public void handle(FTConnection connection, CMSGPlayerAnimation packet) {
+        if (connection.getClient() == null || connection.getClient().isSpectator()) return;
         SMSGPlayerAnimation relayPacket = packet.translate(translator);
         connection.getClient().getGameSessionId().ifPresent(gameSessionId -> {
             final List<FTClient> clients = RelayManager.getInstance().getClientsInSession(gameSessionId);

@@ -3,6 +3,8 @@ package com.jftse.emulator.server.core.service.impl;
 import com.jftse.emulator.common.service.ConfigService;
 import com.jftse.emulator.server.core.client.FTPlayer;
 import com.jftse.emulator.server.core.packets.tutorial.S2CTutorialFinishPacket;
+import com.jftse.emulator.server.core.packets.player.S2CPlayerLevelExpPacket;
+import com.jftse.emulator.server.core.packets.player.S2CPlayerStatusPointChangePacket;
 import com.jftse.emulator.server.net.FTClient;
 import com.jftse.entities.database.model.item.Product;
 import com.jftse.entities.database.model.tutorial.Tutorial;
@@ -15,6 +17,7 @@ import com.jftse.server.core.service.ItemRewardService;
 import com.jftse.server.core.service.LevelService;
 import com.jftse.server.core.service.PlayerService;
 import com.jftse.server.core.service.TutorialService;
+import com.jftse.server.core.shared.packets.shop.SMSGSetMoney;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -103,5 +106,10 @@ public class TutorialServiceImpl implements TutorialService {
 
         S2CTutorialFinishPacket tutorialFinishPacket = new S2CTutorialFinishPacket(true, (byte) level, rewardExp, rewardGold, (int) Math.ceil((double) timeNeeded / 1000), rewardItemList);
         connection.sendTCP(tutorialFinishPacket);
+        // Send authoritative snapshots after the reward receipt so both native
+        // and browser clients can use newly earned points without reconnecting.
+        connection.sendTCP(new S2CPlayerStatusPointChangePacket(player));
+        connection.sendTCP(new S2CPlayerLevelExpPacket((byte) player.getLevel(), player.getExpPoints()));
+        connection.sendTCP(SMSGSetMoney.builder().ap(ftClient.getAp().get()).gold(player.getGold()).build());
     }
 }

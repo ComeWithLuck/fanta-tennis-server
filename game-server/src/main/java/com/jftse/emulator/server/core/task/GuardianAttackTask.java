@@ -3,6 +3,7 @@ package com.jftse.emulator.server.core.task;
 import com.jftse.emulator.server.core.life.room.GameSession;
 import com.jftse.emulator.server.core.manager.GameManager;
 import com.jftse.emulator.server.core.manager.ServiceManager;
+import com.jftse.emulator.server.core.matchplay.GameSessionManager;
 import com.jftse.emulator.server.core.matchplay.event.EventHandler;
 import com.jftse.emulator.server.core.matchplay.event.RunnableEvent;
 import com.jftse.emulator.server.core.matchplay.game.MatchplayGuardianGame;
@@ -25,6 +26,8 @@ public class GuardianAttackTask extends AbstractTask {
 
     private final GuardianBattleState guardianBattleState;
 
+    private final GameSession boundSession;
+
     private final EventHandler eventHandler;
 
     public GuardianAttackTask(FTConnection connection) {
@@ -32,6 +35,7 @@ public class GuardianAttackTask extends AbstractTask {
 
         this.guardianSkillsService = ServiceManager.getInstance().getGuardianSkillsService();
         this.guardianBattleState = null;
+        this.boundSession = connection.getClient() == null ? null : connection.getClient().getActiveGameSession();
 
         eventHandler = GameManager.getInstance().getEventHandler();
     }
@@ -41,13 +45,17 @@ public class GuardianAttackTask extends AbstractTask {
 
         this.guardianSkillsService = ServiceManager.getInstance().getGuardianSkillsService();
         this.guardianBattleState = guardianBattleState;
+        this.boundSession = connection.getClient() == null ? null : connection.getClient().getActiveGameSession();
 
         eventHandler = GameManager.getInstance().getEventHandler();
     }
 
     @Override
     public void run() {
-        if (connection.getClient() == null) return;
+        // notes-v389 (user-approved host handover, 2026-11-23): a task bound to a client that left the session acts through
+        // the session's current host (GameSessionManager.actingConnection).
+        final FTConnection connection = GameSessionManager.actingConnection(boundSession, this.connection);
+        if (connection == null) return;
         GameSession gameSession = connection.getClient().getActiveGameSession();
         if (gameSession == null) return;
         MatchplayGuardianGame game = (MatchplayGuardianGame) gameSession.getMatchplayGame();
@@ -68,6 +76,8 @@ public class GuardianAttackTask extends AbstractTask {
     }
 
     private void pickAttack(GameSession gameSession, MatchplayGuardianGame game, boolean hasPhaseEnded, GuardianBattleState guardianBattleState) {
+        final FTConnection connection = GameSessionManager.actingConnection(gameSession, this.connection);
+        if (connection == null) return;
         final long loopTime = hasPhaseEnded || !game.isAdvancedBossGuardianMode() ? MatchplayGuardianGame.guardianAttackLoopTime : game.getPhaseManager().getGuardianAttackLoopTime((AdvancedGuardianState) guardianBattleState);
         if (loopTime != -1) {
             final Skill skill = hasPhaseEnded || !game.isAdvancedBossGuardianMode() ?

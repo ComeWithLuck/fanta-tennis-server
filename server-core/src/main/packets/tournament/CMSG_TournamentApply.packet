@@ -1,0 +1,3 @@
+message CMSG_TournamentApply (0x26B1) {
+    int32 tournamentId = 1;
+}

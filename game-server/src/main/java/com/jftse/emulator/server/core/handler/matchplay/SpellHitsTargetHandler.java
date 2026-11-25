@@ -58,6 +58,7 @@ public class SpellHitsTargetHandler implements PacketHandler<FTConnection, CMSGS
 
     private static final long SKILL_MOAICO_ID = 15L;
     private static final long SKILL_BLESSES_OF_MEDUSA_ID = 63L;
+    private static final long SKILL_REBIRTH_ONE_ID = 29L;
 
     public SpellHitsTargetHandler() {
         random = new Random();
@@ -308,7 +309,10 @@ public class SpellHitsTargetHandler implements PacketHandler<FTConnection, CMSGS
                             .filter(state -> state.getPosition() == targetPosition)
                             .findFirst()
                             .orElse(null);
-                    if (guardianBattleState == null || guardianBattleState.getCurrentHealth().get() < 1)
+                    // The client revives a dead guardian with RebirthOne cast as Flora (native 5373f8 -> 4eb220 -> 0x22F1),
+                    // so that skill must still reach a guardian at 0 HP; the heal below brings it back.
+                    boolean reviveDeadGuardian = skill != null && skill.getId() == SKILL_REBIRTH_ONE_ID;
+                    if (guardianBattleState == null || guardianBattleState.getCurrentHealth().get() < 1 && !reviveDeadGuardian)
                         return false;
 
                     if (isAdvancedBossGuardianModeActive) {

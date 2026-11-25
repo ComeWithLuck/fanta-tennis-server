@@ -1,0 +1,5 @@
+message CMSG_TournamentBracket (0x26C0) {
+    int32 tournamentId = 1;
+    byte isFinal = 2;
+    byte group = 3;
+}

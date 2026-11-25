@@ -1,0 +1,4 @@
+// Gui_EmblemQuest complete (notes-v185): the quest index as u16; the client then waits 20 s for S2C 0x226B.
+message CMSG_EmblemComplete (0x227C) {
+    short questIndex = 1;
+}

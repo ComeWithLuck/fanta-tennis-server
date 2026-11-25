@@ -13,13 +13,18 @@ import java.util.List;
 
 public class S2CRoomPlayerListInformationPacket extends Packet {
     public S2CRoomPlayerListInformationPacket(List<RoomPlayer> roomPlayerList) {
+        this(roomPlayerList, null, null);
+    }
+
+    /** Serialize a proposed Pet change without temporarily mutating the room. */
+    public S2CRoomPlayerListInformationPacket(List<RoomPlayer> roomPlayerList, RoomPlayer petOwner, PetView proposedPet) {
         super(PacketOperations.S2CRoomPlayerInformation);
 
         this.write((char) roomPlayerList.size());
         for (RoomPlayer roomPlayer : roomPlayerList) {
             EquippedItemParts equippedItemParts = roomPlayer.getEquippedItemPartsIDX();
             EquippedItemStats equippedItemStats = roomPlayer.getEquippedItemStats();
-            PetView pet = roomPlayer.getPet();
+            PetView pet = roomPlayer == petOwner ? proposedPet : roomPlayer.getPet();
 
             boolean isSpectator = roomPlayer.getPosition() > 3;
             this.write(roomPlayer.getPosition());
@@ -51,11 +56,9 @@ public class S2CRoomPlayerListInformationPacket extends Packet {
             this.write((byte) 0);
             this.write(roomPlayer.getCoupleName());
             this.write(0);
-            this.write((byte) 0);
-            this.write((short) 0); // emblem slot 1
-            this.write((short) 0); // emblem slot 2
-            this.write((short) 0); // emblem slot 3
-            this.write((short) 0); // emblem slot 4
+            this.write(roomPlayer.getBettingSide()); // bet side: 0 red, 1 blue, 0xff none (client 0x494313; was 0 = red)
+            // The four equipped emblems (notes-v185 E3; were zeros).
+            com.jftse.emulator.server.core.packets.emblem.S2CEmblemSlotPacket.write(this, roomPlayer.getPlayerId());
 
             this.write((BattleUtils.calculatePlayerHp(roomPlayer.getLevel()) + equippedItemStats.getAddHp() + roomPlayer.getBonusHp()));
 

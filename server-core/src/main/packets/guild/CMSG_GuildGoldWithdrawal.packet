@@ -1,0 +1,4 @@
+// GuiPop_GuildGoldWithdrawl OK (558402): the slider amount, sent only for 5000..500000.
+message CMSG_GuildGoldWithdrawal (0x2029) {
+    int32 amount = 1;
+}

@@ -32,6 +32,22 @@ public class BattlemonSlotEquipmentServiceImpl implements BattlemonSlotEquipment
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public BattlemonSlotEquipment findByPlayerId(Long playerId) {
+        return battlemonSlotEquipmentRepository.findByPlayerId(playerId).orElse(null);
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public BattlemonSlotEquipment findOrCreateByPlayerId(Long playerId) {
+        return battlemonSlotEquipmentRepository.findByPlayerId(playerId).orElseGet(() -> {
+            BattlemonSlotEquipment created = new BattlemonSlotEquipment();
+            created.setPlayerId(playerId);
+            return battlemonSlotEquipmentRepository.save(created);
+        });
+    }
+
+    @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public void updateBattlemonSlots(BattlemonSlotEquipment battlemonSlotEquipment, Integer battlemonSlotId) {
         battlemonSlotEquipment = findById(battlemonSlotEquipment.getId());

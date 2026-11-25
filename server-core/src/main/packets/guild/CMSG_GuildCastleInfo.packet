@@ -1,0 +1,4 @@
+// GuiPop_GuildSystem castle tab (55d66a / 55dbd0 / 55dd47): an empty request; the answer is S2CGuildCastleInfoAnswerPacket
+// (0x2045, 559640: byte result; on 0 int, int, byte access, int fee -> the club's castle record +0x160).
+message CMSG_GuildCastleInfo (0x2044) {
+}

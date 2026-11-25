@@ -10,6 +10,7 @@ import com.jftse.emulator.server.core.packets.lobby.room.S2CRoomInformationPacke
 import com.jftse.emulator.server.core.packets.lobby.room.S2CRoomPlayerListInformationPacket;
 import com.jftse.emulator.server.core.packets.player.S2CPlayerInfoPlayStatsPacket;
 import com.jftse.emulator.server.core.packets.player.S2CPlayerStatusPointChangePacket;
+import com.jftse.emulator.server.core.packets.player.S2CPlayerLevelExpPacket;
 import com.jftse.emulator.server.net.FTClient;
 import com.jftse.emulator.server.net.FTConnection;
 import com.jftse.entities.database.model.player.PlayerStatistic;
@@ -21,6 +22,7 @@ import com.jftse.server.core.service.PlayerStatisticService;
 import com.jftse.server.core.shared.packets.lobby.room.CMSGClientBackInRoom;
 import com.jftse.server.core.shared.packets.lobby.room.SMSGClientBackInRoom;
 import com.jftse.server.core.shared.packets.player.SMSGSetCouplePoints;
+import com.jftse.server.core.shared.packets.shop.SMSGSetMoney;
 
 import java.util.List;
 
@@ -62,6 +64,7 @@ public class ClientBackInRoomPacketHandler implements PacketHandler<FTConnection
         roomPlayer.setGameAnimationSkipReady(false);
         roomPlayer.getConnectedToRelay().set(false);
         roomPlayer.getPickedUpSkillCrystals().clear();
+        roomPlayer.getPetPickedUpSkillCrystals().clear();
         roomPlayer.resetBonusStats();
 
         synchronized (currentClientRoom) {
@@ -84,6 +87,8 @@ public class ClientBackInRoomPacketHandler implements PacketHandler<FTConnection
 
         connection.sendTCP(couplePointsPacket);
         connection.sendTCP(playerStatusPointChangePacket, playerInfoPlayStatsPacket);
+        connection.sendTCP(new S2CPlayerLevelExpPacket((byte) player.getLevel(), player.getExpPoints()),
+                SMSGSetMoney.builder().ap(client.getAp().get()).gold(player.getGold()).build());
         connection.sendTCP(roomInformationPacket, roomPlayerListInformationPacket);
     }
 }

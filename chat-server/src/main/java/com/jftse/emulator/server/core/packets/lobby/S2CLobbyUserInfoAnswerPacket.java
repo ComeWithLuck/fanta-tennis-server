@@ -52,10 +52,8 @@ public class S2CLobbyUserInfoAnswerPacket extends Packet {
             this.write(couple != null ? couple.getFriend().getName() : "");
             this.write(0); // charming points
             this.write(0);
-            this.write((short) 0); // emblem slot 1
-            this.write((short) 0); // emblem slot 2
-            this.write((short) 0); // emblem slot 3
-            this.write((short) 0); // emblem slot 4
+            // The four equipped emblems (notes-v185 E3; were zeros).
+            com.jftse.emulator.server.core.packets.emblem.S2CEmblemSlotPacket.write(this, player.getId());
         }
     }
 }

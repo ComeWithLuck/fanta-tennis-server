@@ -1,0 +1,7 @@
+message CMSG_TournamentGmSpectate (0x2416) {
+    int32 tournamentId = 1;
+    byte isFinal = 2;
+    byte group = 3;
+    byte round = 4;
+    byte matchPosition = 5;
+}

@@ -186,6 +186,8 @@ public enum PacketOperations {
     C2SQuickSlotUseRequest(0x1BDA),
     C2SCombineNowRecipe(0x23BE),
     S2CCombineNowRecipe(0x23BF),
+    C2SCardOpen(0x1DE3), // GuiPop_AbilityCard btCardOpen (54cb9b), notes-v175
+    S2CCardOpenAnswer(0x1DE4), // handler 54ce00
     S2CExpandCardSlot(0x1DE5),
     C2SHomeItemsClearReq(0x2552),
     C2SHomeItemsPlaceReq(0x2550),
@@ -347,6 +349,13 @@ public enum PacketOperations {
 
     C2SEmblemListRequest(0x226A),
     S2CEmblemListAnswer(0x226B),
+    C2SEmblemAccept(0x2274), // Gui_EmblemQuest btAccept (event 0x82, 0x49ab7d), notes-v185
+    C2SEmblemAbandon(0x2278), // btAbandon (0x83, 0x49ac46)
+    C2SEmblemComplete(0x227C), // btAccept as "Complete" (0x84, 0x49ac25)
+    S2CEmblemCompleteAnswer(0x227D), // scene dispatcher 0x49b5ca -> 0x49b0a0
+    S2CEmblemCounters(0x2292), // Gui_Main 0x4b0130 -> 0x4ad730 -> 0x493090
+    C2SEmblemSlotApply(0x2295), // GuiPop_MyInfo btEmblemApply (0x5721a0), notes-v185 E3
+    S2CEmblemSlotAnswer(0x2297), // 0x4966e0 -> 0x4932d0 (char +0x30a..+0x310), scene event 0x34
 
     C2SLobbyJoin(0x237A),
     C2SLobbyLeave(0x2379),

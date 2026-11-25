@@ -1,5 +1,7 @@
 package com.jftse.emulator.server.core.matchplay.handler;
 
+import com.jftse.emulator.server.core.life.room.RoomBallUse;
+import com.jftse.emulator.server.core.matchplay.ClubMatchReward;
 import com.jftse.emulator.common.service.ConfigService;
 import com.jftse.emulator.server.core.client.FTPlayer;
 import com.jftse.emulator.server.core.client.PlayerStatisticView;
@@ -140,6 +142,7 @@ public class MatchplayBattleModeHandler implements MatchplayHandleable {
 
         if (!game.getFinished().compareAndSet(false, true))
             return;
+        RoomBallUse.afterMatch(gameSession, activeRoom); // notes-v404: one use of the owner's room ball per match
 
         Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
         if (game.getEndTime() == null)
@@ -169,7 +172,7 @@ public class MatchplayBattleModeHandler implements MatchplayHandleable {
 
         game.addBonusesToRewards(activeRoom.getRoomPlayerList(), matchplayReward.getPlayerRewards());
 
-        GameSessionManager.getInstance().addMatchplayReward(activeRoom.getRoomId(), matchplayReward);
+        GameSessionManager.getInstance().addMatchplayReward(activeRoom, clients, gameSessionId, matchplayReward);
 
         List<MatchFinishedMessage.PlayerDto> playerDtoList = new ArrayList<>();
 
@@ -265,6 +268,8 @@ public class MatchplayBattleModeHandler implements MatchplayHandleable {
                 S2CMatchplayItemRewardsPacket itemRewardsPacket = new S2CMatchplayItemRewardsPacket(matchplayReward);
                 client.getConnection().sendTCP(itemRewardsPacket);
 
+                // The club's share of this match (user-approved rule, ClubMatchReward), sent in the 0x1846 club fields.
+                ClubMatchReward.apply(player.getId(), playerReward, wonGame);
                 S2CMatchplaySetExperienceGainInfoData setExperienceGainInfoData = new S2CMatchplaySetExperienceGainInfoData(resultTitle, (int) Math.ceil((double) game.getTimeNeeded() / 1000), playerReward, (byte) playerLevel, rp);
                 eventHandler.offer(eventHandler.createPacketEvent(client, setExperienceGainInfoData, PacketEventType.DEFAULT, 0));
             } else {

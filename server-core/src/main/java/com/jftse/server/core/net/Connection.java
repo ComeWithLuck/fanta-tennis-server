@@ -48,6 +48,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @see ServerType
  */
 public abstract class Connection<T extends Client<? extends Connection<T>>> {
+    public boolean isBrowserTransport() {
+        return ctx != null && BrowserTransport.isBrowser(ctx.channel());
+    }
     /**
      * Associated client instance (may be {@code null} until fully established).
      */

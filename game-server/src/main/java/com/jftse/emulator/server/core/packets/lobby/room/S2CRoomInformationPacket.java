@@ -1,6 +1,7 @@
 package com.jftse.emulator.server.core.packets.lobby.room;
 
 import com.jftse.emulator.server.core.life.room.Room;
+import com.jftse.emulator.server.core.life.room.RoomBetting;
 import com.jftse.server.core.protocol.Packet;
 import com.jftse.server.core.protocol.PacketOperations;
 
@@ -13,7 +14,7 @@ public class S2CRoomInformationPacket extends Packet {
         this.write(room.getRoomType());
         this.write(room.getMode());
         this.write(room.getRule());
-        this.write((byte) 0); // betting mode
+        this.write(RoomBetting.mode(room)); // betting mode (client +0x333: 2 gold)
         this.write((byte) 0); // betting coins
         this.write(room.getBettingAmount());
         this.write(room.getPlayers());

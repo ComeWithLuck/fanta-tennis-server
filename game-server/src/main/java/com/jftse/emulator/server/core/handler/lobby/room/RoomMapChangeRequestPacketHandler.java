@@ -2,6 +2,7 @@ package com.jftse.emulator.server.core.handler.lobby.room;
 
 import com.jftse.emulator.common.service.ConfigService;
 import com.jftse.emulator.server.core.life.room.Room;
+import com.jftse.emulator.server.core.life.room.RoomAccessPolicy;
 import com.jftse.emulator.server.core.manager.GameManager;
 import com.jftse.emulator.server.net.FTClient;
 import com.jftse.emulator.server.net.FTConnection;
@@ -19,6 +20,7 @@ public class RoomMapChangeRequestPacketHandler implements PacketHandler<FTConnec
         Room room = client.getActiveRoom();
         if (room != null) {
             synchronized (room) {
+                if (!RoomAccessPolicy.mayConfigure(client, room)) return;
                 if (ConfigService.getInstance().getValue("game.map.allow.snowmoon", false) && room.getMode() == GameMode.GUARDIAN) {
                     if (room.getPreviousMap() == 3 && packet.getMap() == 5) {
                         packet.setMap((byte) 4);

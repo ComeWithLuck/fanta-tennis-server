@@ -23,10 +23,8 @@ public class RoomCreateRequestPacketHandler implements PacketHandler<FTConnectio
         if (client.getActiveRoom() != null || !client.hasPlayer())
             return;
 
-        if (packet.getRoomType() == RoomType.BATTLEMON) {
-            //GameManager.getInstance().handleChatLobbyJoin(client);
-            return;
-        }
+        // notes-v401: Battlemon rooms (room type 2) are created like the others (GuiPop_MakeRoom items Pet Battle / Pet Basic,
+        // 56a8cf: type 2, mode 1 / 0); RoomManager.createRoom keeps them to two human seats (the Pets take seat + 2).
 
         if (!client.getIsJoiningOrLeavingRoom().compareAndSet(false, true)) {
             return;

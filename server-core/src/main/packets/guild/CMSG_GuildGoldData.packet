@@ -1,0 +1,4 @@
+// Club Gold tab (GuiPop_GuildSystem btTabMyGuild03): 472250 sends the page (0 after a withdrawal, 55947f).
+message CMSG_GuildGoldData (0x202C) {
+    int32 page = 1;
+}

@@ -1,0 +1,7 @@
+// GuiPop_MyInfo btEmblemApply (notes-v185 E3): the four edited slots (quest index or 0) from char copy +0x71a.
+message CMSG_EmblemSlotApply (0x2295) {
+    short slot1 = 1;
+    short slot2 = 2;
+    short slot3 = 3;
+    short slot4 = 4;
+}

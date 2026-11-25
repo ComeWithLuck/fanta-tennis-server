@@ -1,5 +1,6 @@
 package com.jftse.emulator.server.core.handler.authentication;
 
+import com.jftse.entities.database.model.item.ItemChar;
 import com.jftse.emulator.server.core.manager.ServiceManager;
 import com.jftse.emulator.server.net.FTClient;
 import com.jftse.emulator.server.net.FTConnection;
@@ -28,6 +29,7 @@ public class FirstPlayerPacketHandler implements PacketHandler<FTConnection, CMS
     private final PlayerService playerService;
     private final HomeService homeService;
     private final AuthenticationService authenticationService;
+    private final ItemCharService itemCharService;
 
     public FirstPlayerPacketHandler() {
         clothEquipmentService = ServiceManager.getInstance().getClothEquipmentService();
@@ -41,6 +43,7 @@ public class FirstPlayerPacketHandler implements PacketHandler<FTConnection, CMS
         playerService = ServiceManager.getInstance().getPlayerService();
         homeService = ServiceManager.getInstance().getHomeService();
         authenticationService = ServiceManager.getInstance().getAuthenticationService();
+        itemCharService = ServiceManager.getInstance().getItemCharService();
     }
 
     @Override
@@ -58,6 +61,16 @@ public class FirstPlayerPacketHandler implements PacketHandler<FTConnection, CMS
             player.setAccount(accRef);
             player.setPlayerType(firstPlayerPacket.getPlayerType());
             player.setFirstPlayer(true);
+            // The client shows the unnamed player's stats from the player list (GuiPop_CreateChar 554260 -> 5a79c0) and gives it
+            // 5 status points to spend (5542f5): start from the type's base stats (ItemChar), as PlayerCreate falls back to.
+            ItemChar itemChar = itemCharService.findByPlayerType(player.getPlayerType());
+            if (itemChar != null) {
+                player.setStrength(itemChar.getStrength());
+                player.setStamina(itemChar.getStamina());
+                player.setDexterity(itemChar.getDexterity());
+                player.setWillpower(itemChar.getWillpower());
+            }
+            player.setStatusPoints((byte) 5);
 
             ClothEquipment clothEquipment = new ClothEquipment();
             clothEquipment = clothEquipmentService.save(clothEquipment);

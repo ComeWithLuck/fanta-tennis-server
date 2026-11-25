@@ -56,7 +56,10 @@ public class LoginPacketHandler implements PacketHandler<FTConnection, CMSGLogin
 
     @Override
     public void handle(FTConnection connection, CMSGLogin loginPacket) {
-        final boolean antiCheatEnabled = AuthenticationManager.getInstance().isAntiCheatEnabled();
+        // The opt-in loopback WebSocket listener identifies browser sessions at the transport layer.
+        // Browsers authenticate against the same account service; native executable AC applies to TCP clients.
+        final boolean antiCheatEnabled = AuthenticationManager.getInstance().isAntiCheatEnabled()
+                && !connection.isBrowserTransport();
 
         InetSocketAddress inetSocketAddress = connection.getRemoteAddressTCP();
         if (antiCheatEnabled && !isClientValid(inetSocketAddress, loginPacket.getHwid())) {

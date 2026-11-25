@@ -108,7 +108,22 @@ public class TCPChannelHandler extends TCPHandlerV2<FTConnection> {
         }
 
         GameSession gameSession = client.getActiveGameSession();
+        // A player seat (0..3) dropping out of a running Battle / Guardian match: the match goes on without it, as on a room
+        // leave (native 4bd700: 0x1398 removes the actor). handleRoomPlayerChanges below removes the client from the session,
+        // hands the host over or cancels an emptied session (GameSessionManager, user-approved 2026-11-23, notes-v387).
+        final RoomPlayer departingSeat = gameSession != null ? client.getRoomPlayer() : null;
+        if (gameSession != null && gameSession.isValid() && !gameSession.isBasicMode() && client.getActiveRoom() != null
+                && departingSeat != null && departingSeat.getPosition() < 4) {
+            if (player != null && client.getActiveRoom().getStatus() == RoomStatus.Running) {
+                PlayerStatistic playerStatistic = ServiceManager.getInstance().getPlayerStatisticService().findPlayerStatisticById(player.getPlayerStatisticId());
+                playerStatistic.setNumberOfDisconnects(playerStatistic.getNumberOfDisconnects() + 1);
+                ServiceManager.getInstance().getPlayerStatisticService().save(playerStatistic);
+            }
+            departingSeat.getConnectedToRelay().compareAndSet(true, false);
+            gameSession = null;
+        }
         if (gameSession != null) {
+            final Integer disconnectedSessionId = client.getGameSessionId();
 
             Room currentClientRoom = client.getActiveRoom();
             if (currentClientRoom != null) {
@@ -137,14 +152,15 @@ public class TCPChannelHandler extends TCPHandlerV2<FTConnection> {
                                 }
                             }
                         });
-                        GameSessionManager.getInstance().getGameSessionList().remove(client.getGameSessionId(), gameSession);
+                        GameSessionManager.getInstance().cancelAbandonedBasicSession(disconnectedSessionId, gameSession, currentClientRoom, roomPlayer.getPosition());
+                        GameSessionManager.getInstance().getGameSessionList().remove(disconnectedSessionId, gameSession);
                     }
                 }
                 MatchplayGame game = gameSession.getMatchplayGame();
                 game.getScheduledFutures().forEach(sf -> sf.cancel(false));
                 game.getScheduledFutures().clear();
 
-                GameManager.getInstance().getMatchRallyStatsConsumer().clearSession(client.getGameSessionId());
+                GameManager.getInstance().getMatchRallyStatsConsumer().clearSession(disconnectedSessionId);
 
                 client.setActiveGameSession(null);
             }

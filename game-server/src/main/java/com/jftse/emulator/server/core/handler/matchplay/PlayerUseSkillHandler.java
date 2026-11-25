@@ -85,14 +85,18 @@ public class PlayerUseSkillHandler implements PacketHandler<FTConnection, CMSGPl
         boolean attackerIsPlayer = attackerPosition < 4;
 
         if (attackerIsPlayer && !isQuickSlot) {
+            // The owner's client sends its Pet's casts with the Pet actor position (owner seat + 2): those spend the
+            // Pet's own crystals (PlayerPickingUpCrystalHandler grants them there).
+            Queue<SkillCrystal> crystals = attackerPosition == roomPlayer.getPosition() + 2 && roomPlayer.getPet() != null
+                    ? roomPlayer.getPetPickedUpSkillCrystals() : roomPlayer.getPickedUpSkillCrystals();
             // a canceled skill use will have sourceValue -1 and skillIndex -6?, a less than zero check is enough
             if (anyoneUsesSkill.getSourceValue() == -1 && anyoneUsesSkill.getSkillIndex() < 0) {
-                roomPlayer.getPickedUpSkillCrystals().poll();
+                crystals.poll();
                 return;
             }
 
             try {
-                validateSkillCrystal(roomPlayer.getPickedUpSkillCrystals(), anyoneUsesSkill.getSourceValue(), anyoneUsesSkill.getSkillIndex());
+                validateSkillCrystal(crystals, anyoneUsesSkill.getSourceValue(), anyoneUsesSkill.getSkillIndex());
             } catch (ValidationException ve) {
                 log.warn("({}) {}", player.getId(), ve.getMessage());
                 return;

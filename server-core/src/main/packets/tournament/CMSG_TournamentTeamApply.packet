@@ -1,0 +1,7 @@
+message CMSG_TournamentTeamApply (0x26B5) {
+    int32 tournamentId = 1;
+    int32 player1 = 2;
+    short unk1 = 3;
+    int32 player2 = 4;
+    short unk2 = 5;
+}

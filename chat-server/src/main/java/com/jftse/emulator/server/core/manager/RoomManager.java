@@ -12,15 +12,19 @@ import com.jftse.emulator.server.core.packets.lobby.room.S2CRoomInformationPacke
 import com.jftse.emulator.server.core.packets.lobby.room.S2CRoomPlayerInformationPacket;
 import com.jftse.emulator.server.net.FTClient;
 import com.jftse.emulator.server.net.FTConnection;
+import com.jftse.entities.database.model.guild.Guild;
 import com.jftse.entities.database.model.home.AccountHome;
 import com.jftse.entities.database.model.home.HomeInventory;
 import com.jftse.entities.database.model.messenger.Friend;
 import com.jftse.server.core.protocol.Packet;
 import com.jftse.server.core.protocol.PacketOperations;
+import com.jftse.server.core.service.GuildService;
 import com.jftse.server.core.service.HomeService;
+import com.jftse.server.core.service.PlayerService;
 import com.jftse.server.core.service.SocialService;
 import com.jftse.server.core.shared.packets.lobby.room.CMSGRoomCreate;
 import com.jftse.server.core.shared.packets.lobby.room.CMSGRoomCreateQuick;
+import com.jftse.server.core.shared.packets.shop.SMSGSetMoney;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +56,10 @@ public class RoomManager {
     private SocialService socialService;
     @Autowired
     private HomeService homeService;
+    @Autowired
+    private GuildService guildService;
+    @Autowired
+    private PlayerService playerService;
 
     @PostConstruct
     public void init() {
@@ -75,6 +83,41 @@ public class RoomManager {
 
         townSquare = square;
         registerRoom(square);
+    }
+
+    // Club houses (notes-v405): one roomType 1 / mode 3 room per club that owns its club house (castleOwner, the user-approved
+    // rule: club level >= 5), named after the club [I]; its row carries the club name, access limit and fee. A club that
+    // lost its house keeps its room until it is empty.
+    public synchronized void syncClubHouses() {
+        List<Guild> owners = guildService.findClubHouses();
+        Set<Long> ids = new HashSet<>();
+        for (Guild guild : owners) {
+            ids.add(guild.getId());
+            Room room = rooms.stream().filter(r -> r.getMode() == 3 && guild.getId().equals(r.getClubHouseGuildId())).findFirst().orElse(null);
+            if (room == null) {
+                room = new Room();
+                room.setRoomType((byte) 1);
+                room.setMode((byte) 3);
+                room.setMap((byte) 0);
+                room.setRule((byte) 0);
+                room.setPlayers((byte) 100);
+                room.setPrivate(false);
+                room.setSkillFree(false);
+                room.setQuickSlot(true);
+                room.setLevel((byte) 0);
+                room.setLevelRange((byte) 0);
+                room.setBall(0);
+                room.setClubHouseGuildId(guild.getId());
+                if (registerRoom(room) == null)
+                    continue;
+            }
+            room.setRoomName(guild.getName());
+            room.setClubHouseName(guild.getName());
+            room.setClubHouseAccess(guild.getCastleAccessLimit() == null ? (byte) 3 : guild.getCastleAccessLimit());
+            room.setClubHouseFee(guild.getCastleAdmissionFee() == null ? 0 : guild.getCastleAdmissionFee());
+        }
+        rooms.stream().filter(r -> r.getMode() == 3 && r.getClubHouseGuildId() != null && !ids.contains(r.getClubHouseGuildId())
+                && r.getRoomPlayerList().isEmpty()).toList().forEach(this::removeRoom);
     }
 
     private synchronized Room registerRoom(Room room) {
@@ -277,6 +320,25 @@ public class RoomManager {
             return RoomJoinResult.of((char) -10, room, null);
         }
 
+        // A club house (notes-v405): the club's entry rule; an outsider's fee goes from their gold to the club gold [I].
+        if (room.getMode() == 3 && room.getClubHouseGuildId() != null) {
+            int[] entry = guildService.enterClubHouse(player.getId(), room.getClubHouseGuildId(), player.getGold());
+            if (entry[0] != 0) {
+                return RoomJoinResult.of((char) entry[0], room, null);
+            }
+            if (entry[1] > 0) {
+                // The player pays first (the loaded entity, as GuildCreate / ItemEnchant: a getPlayerRef proxy has no session
+                // here), then the club gets the fee.
+                int newGold = player.getGold() - entry[1];
+                player.syncGold(newGold);
+                playerService.setMoney(player.getPlayer(), newGold);
+                guildService.addClubGold(room.getClubHouseGuildId(), entry[1]);
+                if (client.getConnection() != null) {
+                    client.getConnection().sendTCP(SMSGSetMoney.builder().ap(client.getAp().get()).gold(newGold).build());
+                }
+            }
+        }
+
         updatePlayerRelationship(player);
         createPlayer(room, client, player, position);
 
@@ -314,6 +376,10 @@ public class RoomManager {
                 case 4 -> 20.0f;
                 default -> 12.0f;
             };
+        } else if (room.getMode() == 3) {
+            // The club house hall (FantaCastle.ftm): just inside its door (15..17, 36) [I: the native spawn is not known].
+            spawnX = rnd.nextFloat(14.0f, 19.0f);
+            spawnY = rnd.nextFloat(30.0f, 34.0f);
         } else {
             spawnX = rnd.nextFloat(40.0f, 46.0f);
             spawnY = rnd.nextFloat(60.0f, 64.0f);

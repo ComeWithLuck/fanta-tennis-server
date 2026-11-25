@@ -16,12 +16,16 @@ public class MatchplayPointPacketHandler implements PacketHandler<FTConnection, 
         if (ftClient == null)
             return;
 
+        var participant = ftClient.getRoomPlayer();
+        if (participant == null || participant.getPosition() < 0 || participant.getPosition() >= 4)
+            return;
+
         GameSession gameSession = ftClient.getActiveGameSession();
         if (gameSession == null)
             return;
 
         MatchplayGame game = gameSession.getMatchplayGame();
-        if (game == null)
+        if (game == null || game.getFinished().get())
             return;
 
         game.getHandleable().onPoint(ftClient, packet);

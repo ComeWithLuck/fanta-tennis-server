@@ -1,5 +1,9 @@
 package com.jftse.emulator.server.core.matchplay.handler;
 
+import com.jftse.emulator.server.core.life.room.RoomBallUse;
+import com.jftse.emulator.server.core.matchplay.ClubMatchReward;
+import com.jftse.emulator.server.core.handler.lobby.room.RoomBettingPackets;
+import com.jftse.emulator.server.core.handler.tournament.TournamentRooms;
 import com.jftse.emulator.common.service.ConfigService;
 import com.jftse.emulator.server.core.client.FTPlayer;
 import com.jftse.emulator.server.core.client.PlayerStatisticView;
@@ -113,6 +117,8 @@ public class MatchplayBasicModeHandler implements MatchplayHandleable {
         }
         S2CMatchplayTriggerServe matchplayTriggerServe = new S2CMatchplayTriggerServe(serveInfo);
         GameManager.getInstance().sendPacketToAllClientsInSameGameSession(matchplayTriggerServe, ftClient.getConnection());
+        // A tournament room: the wait texts clear and the in-game play time count starts (TournamentRooms, notes-v198).
+        TournamentRooms.onGameStart(ftClient.getActiveRoom(), clients);
     }
 
     @Override
@@ -130,12 +136,13 @@ public class MatchplayBasicModeHandler implements MatchplayHandleable {
         activeRoom.setStatus(RoomStatus.NotRunning);
 
         gameSession.getFireables().forEach(f -> f.setCancelled(true));
+        RoomBallUse.afterMatch(gameSession, activeRoom); // notes-v404: one use of the owner's room ball per match
         gameSession.getFireables().clear();
 
         StringBuilder gameLogContent = new StringBuilder();
 
         gameLogContent.append("Basic game finished. ");
-        boolean redTeamWon = game.getSetsRedTeam().get() == 2;
+        boolean redTeamWon = game.redTeamWon();
         gameLogContent.append(redTeamWon ? "Red " : "Blue ").append("team won. ");
 
         MatchplayReward matchplayReward = game.getMatchRewards();
@@ -147,7 +154,11 @@ public class MatchplayBasicModeHandler implements MatchplayHandleable {
 
         game.addBonusesToRewards(activeRoom.getRoomPlayerList(), matchplayReward.getPlayerRewards());
 
-        GameSessionManager.getInstance().addMatchplayReward(activeRoom.getRoomId(), matchplayReward);
+        GameSessionManager.getInstance().addMatchplayReward(activeRoom, clients, gameSessionId, matchplayReward);
+        // Spectator gold bets of a betting room (RoomBetting, notes-v179).
+        RoomBettingPackets.settleMatch(activeRoom, clients, redTeamWon);
+        // A tournament room's game decides its bracket match (TournamentRooms, notes-v186).
+        TournamentRooms.recordMatch(activeRoom, clients, game, redTeamWon);
 
         List<MatchFinishedMessage.PlayerDto> playerDtoList = new ArrayList<>();
 
@@ -164,7 +175,7 @@ public class MatchplayBasicModeHandler implements MatchplayHandleable {
             if (isActivePlayer) {
                 gameLogContent.append(isCurrentPlayerInRedTeam ? "red " : "blue ").append(rp.getName()).append(" acc: ").append(rp.getAccountId()).append("; ");
 
-                boolean wonGame = (isCurrentPlayerInRedTeam && game.getSetsRedTeam().get() == 2) || (!isCurrentPlayerInRedTeam && game.getSetsBlueTeam().get() == 2);
+                boolean wonGame = isCurrentPlayerInRedTeam ? game.redTeamWon() : game.blueTeamWon();
 
                 PlayerReward playerReward = matchplayReward.getPlayerReward(rp.getPosition());
                 if (playerReward == null) {
@@ -240,14 +251,16 @@ public class MatchplayBasicModeHandler implements MatchplayHandleable {
                 byte resultTitle = (byte) (wonGame ? 1 : 0);
                 if (playerLevel != oldLevel) {
                     S2CGameEndLevelUpPlayerStatsPacket gameEndLevelUpPlayerStatsPacket = new S2CGameEndLevelUpPlayerStatsPacket(rp.getPosition(), player);
-                    eventHandler.offer(eventHandler.createPacketEvent(client, gameEndLevelUpPlayerStatsPacket, PacketEventType.DEFAULT, 0));
+                    eventHandler.offer(eventHandler.createMatchPacketEvent(client, gameEndLevelUpPlayerStatsPacket, PacketEventType.DEFAULT, 0));
                 }
 
                 S2CMatchplayItemRewardsPacket itemRewardsPacket = new S2CMatchplayItemRewardsPacket(matchplayReward);
                 client.getConnection().sendTCP(itemRewardsPacket);
 
+                // The club's share of this match (user-approved rule, ClubMatchReward), sent in the 0x1846 club fields.
+                ClubMatchReward.apply(player.getId(), playerReward, wonGame);
                 S2CMatchplaySetExperienceGainInfoData setExperienceGainInfoData = new S2CMatchplaySetExperienceGainInfoData(resultTitle, (int) Math.ceil((double) game.getTimeNeeded() / 1000), playerReward, (byte) playerLevel, rp);
-                eventHandler.offer(eventHandler.createPacketEvent(client, setExperienceGainInfoData, PacketEventType.DEFAULT, 0));
+                eventHandler.offer(eventHandler.createMatchPacketEvent(client, setExperienceGainInfoData, PacketEventType.DEFAULT, 0));
             } else {
                 gameLogContent.append("spec: ").append(rp.getName()).append(" acc: ").append(rp.getAccountId()).append("; ");
 
@@ -256,10 +269,10 @@ public class MatchplayBasicModeHandler implements MatchplayHandleable {
                 }
             }
             S2CMatchplaySetGameResultData setGameResultData = new S2CMatchplaySetGameResultData(matchplayReward.getPlayerRewards());
-            eventHandler.offer(eventHandler.createPacketEvent(client, setGameResultData, PacketEventType.DEFAULT, 0));
+            eventHandler.offer(eventHandler.createMatchPacketEvent(client, setGameResultData, PacketEventType.DEFAULT, 0));
 
             S2CMatchplayBackToRoom backToRoomPacket = new S2CMatchplayBackToRoom();
-            eventHandler.offer(eventHandler.createPacketEvent(client, backToRoomPacket, PacketEventType.FIRE_DELAYED, TimeUnit.SECONDS.toMillis(12)));
+            eventHandler.offer(eventHandler.createMatchPacketEvent(client, backToRoomPacket, PacketEventType.FIRE_DELAYED, TimeUnit.SECONDS.toMillis(12)));
             client.setActiveGameSession(null);
         }
 
@@ -339,6 +352,15 @@ public class MatchplayBasicModeHandler implements MatchplayHandleable {
         final boolean isFinished = game.getFinished().get();
 
         if (isFinished) {
+            // Spectators receive the shared result but no personal win/loss
+            // receipt. Publish the last authoritative score before onEnd so
+            // every client can finish its scoreboard, including observers.
+            short pointingTeam = game.isRedTeam(pointPacket.getPointsTeam()) ? (short)0 : (short)1;
+            GameManager.getInstance().sendPacketToAllClientsInSameGameSession(
+                    new S2CMatchplayTeamWinsPoint(pointingTeam, pointPacket.getBallState(),
+                            (byte)game.getPointsRedTeam().get(), (byte)game.getPointsBlueTeam().get()), ftClient.getConnection());
+            GameManager.getInstance().sendPacketToAllClientsInSameGameSession(
+                    new S2CMatchplayTeamWinsSet((byte)game.getSetsRedTeam().get(), (byte)game.getSetsBlueTeam().get()), ftClient.getConnection());
             this.onEnd(ftClient);
         } else {
             boolean anyTeamWonSet = setsTeamRead != game.getSetsRedTeam().get() || setsTeamBlue != game.getSetsBlueTeam().get();
@@ -372,11 +394,11 @@ public class MatchplayBasicModeHandler implements MatchplayHandleable {
                     pointingTeamPosition = 1;
 
                 S2CMatchplayTeamWinsPoint matchplayTeamWinsPoint = new S2CMatchplayTeamWinsPoint(pointingTeamPosition, pointPacket.getBallState(), (byte) game.getPointsRedTeam().get(), (byte) game.getPointsBlueTeam().get());
-                eventHandler.offer(eventHandler.createPacketEvent(client, matchplayTeamWinsPoint, PacketEventType.DEFAULT, 0));
+                eventHandler.offer(eventHandler.createMatchPacketEvent(client, matchplayTeamWinsPoint, PacketEventType.DEFAULT, 0, true));
 
                 if (anyTeamWonSet) {
                     S2CMatchplayTeamWinsSet matchplayTeamWinsSet = new S2CMatchplayTeamWinsSet((byte) game.getSetsRedTeam().get(), (byte) game.getSetsBlueTeam().get());
-                    eventHandler.offer(eventHandler.createPacketEvent(client, matchplayTeamWinsSet, PacketEventType.DEFAULT, 0));
+                    eventHandler.offer(eventHandler.createMatchPacketEvent(client, matchplayTeamWinsSet, PacketEventType.DEFAULT, 0, true));
                 }
 
                 if (isActivePlayer) {
@@ -413,7 +435,7 @@ public class MatchplayBasicModeHandler implements MatchplayHandleable {
                 }
                 S2CMatchplayTriggerServe matchplayTriggerServe = new S2CMatchplayTriggerServe(serveInfo);
                 for (FTClient client : clients)
-                    eventHandler.offer(eventHandler.createPacketEvent(client, matchplayTriggerServe, PacketEventType.FIRE_DELAYED, TimeUnit.SECONDS.toMillis(6)));
+                    eventHandler.offer(eventHandler.createMatchPacketEvent(client, matchplayTriggerServe, PacketEventType.FIRE_DELAYED, TimeUnit.SECONDS.toMillis(6), true));
             }
         }
     }

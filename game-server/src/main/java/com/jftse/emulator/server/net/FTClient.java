@@ -21,6 +21,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.Optional;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -40,6 +41,13 @@ public class FTClient extends Client<FTConnection> {
     private Room activeRoom;
     private RoomPlayer roomPlayer;
     private Integer gameSessionId;
+    private volatile long roomEpoch;
+    private volatile long gameSessionEpoch;
+
+    public synchronized void setActiveRoom(Room room) {
+        if (this.activeRoom != room) roomEpoch++;
+        this.activeRoom = room;
+    }
 
     private FruitManager fruitManager = new FruitManager();
 
@@ -157,7 +165,10 @@ public class FTClient extends Client<FTConnection> {
         return GameSessionManager.getInstance().getGameSessionBySessionId(this.gameSessionId);
     }
 
-    public void setActiveGameSession(Integer gameSessionId) {
+    public synchronized void setActiveGameSession(Integer gameSessionId) {
+        // Clearing a completed match still permits its result/return packets.
+        // Starting another match invalidates all delayed packets from it.
+        if (gameSessionId != null && !Objects.equals(this.gameSessionId, gameSessionId)) gameSessionEpoch++;
         this.gameSessionId = gameSessionId;
     }
 

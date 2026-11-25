@@ -75,6 +75,12 @@ public class ServiceManager {
     @Autowired
     private ItemSpecialService itemSpecialService;
     @Autowired
+    private CouponService couponService;
+    @Autowired
+    private CardPoolService cardPoolService;
+    @Autowired
+    private EmblemQuestService emblemQuestService;
+    @Autowired
     private SocialService socialService;
     @Autowired
     private ChallengeService challengeService;
@@ -131,6 +137,10 @@ public class ServiceManager {
     private GameEventService gameEventService;
     @Autowired
     private ScriptStateService scriptStateService;
+    @Autowired
+    private TournamentService tournamentService;
+    @Autowired
+    private TournamentBracketService tournamentBracketService;
 
     @Autowired
     private GrpcAuthService grpcAuthService;

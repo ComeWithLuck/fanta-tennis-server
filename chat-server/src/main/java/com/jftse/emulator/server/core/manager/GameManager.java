@@ -396,7 +396,8 @@ public class GameManager implements ServerLoopHandler {
         }
 
         roomPlayerList.removeIf(rp -> rp.getPlayerId() == activePlayer.getId());
-        if (roomPlayerList.isEmpty() && room.getMode() != 2) {
+        // The square (mode 2) and the club houses (mode 3, RoomManager.syncClubHouses) stay when they empty.
+        if (roomPlayerList.isEmpty() && room.getMode() != 2 && room.getMode() != 3) {
             roomManager.removeRoom(room);
         }
 

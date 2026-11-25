@@ -1,0 +1,15 @@
+// 559500 -> 4740c0 (notes-v401): short result (0 ok, -10 MSG_FORCE_DISCONNECTED_QUIT_DB_ERROR), byte count, then per row
+// int id, FILETIME date, int gold used, name, int gold remaining - GuiCtrl_GuildGoldUseInfo stGuildGoldUseDay / UseMoney /
+// UseUserName / RemainMoney (591600).
+message GuildGoldUseInfo {
+    int32 id = 1;
+    date date = 2;
+    int32 goldUsed = 3;
+    string name = 4;
+    int32 goldRemaining = 5;
+}
+
+message SMSG_GuildGoldData (0x202D) {
+    short result = 1;
+    repeated GuildGoldUseInfo rows = 2 [type = byte];
+}

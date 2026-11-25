@@ -1,0 +1,4 @@
+message CMSG_TournamentTeamCancel (0x26B7) {
+    int32 tournamentId = 1;
+    int32 teamId = 2;
+}

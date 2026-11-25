@@ -68,27 +68,30 @@ public class GameAnimationSkipTriggeredPacketHandler implements PacketHandler<FT
             S2CGameDisplayPlayerStatsPacket playerStatsPacket = new S2CGameDisplayPlayerStatsPacket(new ArrayList<>(room.getRoomPlayerList()), room.getMode());
             GameManager.getInstance().sendPacketToAllClientsInSameGameSession(playerStatsPacket, ftClient.getConnection());
 
-            ThreadManager.getInstance().schedule(() -> {
+            final GameSession startingSession = ftClient.getActiveGameSession();
+            var startTask = ThreadManager.getInstance().schedule(() -> {
                 FTClient client = connection.getClient();
                 if (client == null) return;
 
                 Room threadRoom = client.getActiveRoom();
-                if (threadRoom == null || threadRoom.getStatus() != RoomStatus.Running) {
+                if (threadRoom != room || threadRoom.getStatus() != RoomStatus.Running
+                        || client.getActiveGameSession() != startingSession) {
                     return;
                 }
 
                 S2CGameSetNameColorAndRemoveBlackBar setNameColorAndRemoveBlackBarPacket = new S2CGameSetNameColorAndRemoveBlackBar(room);
                 GameManager.getInstance().sendPacketToAllClientsInSameGameSession(setNameColorAndRemoveBlackBarPacket, client.getConnection());
 
-                GameSession gameSession = client.getActiveGameSession();
+                GameSession gameSession = startingSession;
                 MatchplayGame game = gameSession.getMatchplayGame();
-                if (game == null)
+                if (game == null || game.getFinished().get())
                     return;
 
                 GameEventBus.call(GameEventType.MP_GAME_ANIM_SKIP_END, game, room);
 
                 game.getHandleable().onStart(client);
             }, 8, TimeUnit.SECONDS);
+            startingSession.getMatchplayGame().getScheduledFutures().add(startTask);
         }
     }
 }

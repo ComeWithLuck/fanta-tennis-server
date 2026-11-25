@@ -22,6 +22,7 @@ public class BallAnimationHandler implements PacketHandler<FTConnection, CMSGBal
     @Override
     public void handle(FTConnection connection, CMSGBallAnimation packet) {
         FTClient client = connection.getClient();
+        if (client == null || client.isSpectator()) return;
 
         MatchBallSyncMessage mbsm = MatchBallSyncMessage.builder()
                 .gameSessionId(client.getGameSessionId().orElse(null))

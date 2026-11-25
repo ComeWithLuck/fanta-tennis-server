@@ -33,6 +33,13 @@ public class RoomPlayer {
 
     private Queue<SkillCrystal> pickedUpSkillCrystals = new LinkedBlockingQueue<>(2);
 
+    // The room Pet's own crystal inventory (client +0x874 of the Pet actor). Filled by an 18E7 whose pet-category
+    // byte is set (client 49c050, sent by 524420 / 5224e0 for the local actor's same-team type-3 Pets).
+    private Queue<SkillCrystal> petPickedUpSkillCrystals = new LinkedBlockingQueue<>(2);
+
+    // Spectator gold bet side (RoomBetting): 0 red, 1 blue, 0xff none; sent in the player record (0x494313).
+    private volatile byte bettingSide = RoomBetting.NONE;
+
     private long ppIdRingExp = 0;
     private long ppIdRingGold = 0;
     private long ppIdRingWiseman = 0;

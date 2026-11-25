@@ -32,6 +32,12 @@ public class S2CRoomListAnswerPacket extends Packet {
             this.write(room.getMap());
             this.write(room.isSkillFree());
             this.write(room.isQuickSlot());
+            // 46cd00 (46ce78): a roomType 1 / mode 3 row carries the club house fields before the player count.
+            if (room.getRoomType() == 1 && room.getMode() == 3) {
+                this.write(room.getClubHouseName() == null ? "" : room.getClubHouseName());
+                this.write(room.getClubHouseAccess());
+                this.write(room.getClubHouseFee());
+            }
             this.write(BitKit.fromUnsignedInt(playerCount));
             this.write((byte) 0); // ?
             this.write((byte) 0); // ?

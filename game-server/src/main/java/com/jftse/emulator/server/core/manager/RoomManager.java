@@ -9,6 +9,8 @@ import com.jftse.emulator.server.core.constants.RoomPositionState;
 import com.jftse.emulator.server.core.constants.RoomStatus;
 import com.jftse.emulator.server.core.constants.RoomType;
 import com.jftse.emulator.server.core.life.room.Room;
+import com.jftse.emulator.server.core.life.room.RoomBallUse;
+import com.jftse.emulator.server.core.life.room.RoomBetting;
 import com.jftse.emulator.server.core.life.room.RoomJoinResult;
 import com.jftse.emulator.server.core.life.room.RoomPlayer;
 import com.jftse.emulator.server.core.packets.lobby.room.S2CRoomInformationPacket;
@@ -110,7 +112,9 @@ public class RoomManager {
         room.setRoomName(roomCreatePacket.getRoomName());
         room.setRoomType(roomCreatePacket.getRoomType());
         room.setAllowBattlemon(room.getRoomType() == 2 ? (byte) 1 : (byte) 0);
-        room.setMode(roomCreatePacket.getMode());
+        // GuiPop_MakeRoom 56a890 sends game type 4 for a Basic betting room (GAME_TYPE_NOR_BETTING [I]); JFTSE plays it as Basic
+        // and keeps the bet in bettingType (RoomBetting, notes-v179).
+        room.setMode(roomCreatePacket.getMode() == 4 && (roomCreatePacket.getBettingType() & 0xff) != 0 ? (byte) GameMode.BASIC : roomCreatePacket.getMode());
         room.setRule(roomCreatePacket.getRule());
         room.setPlayers(roomCreatePacket.getPlayers());
         room.setPrivate(roomCreatePacket.getIsPrivate());
@@ -119,10 +123,12 @@ public class RoomManager {
         room.setQuickSlot(roomCreatePacket.getQuickSlot());
         room.setLevel((byte) player.getLevel());
         room.setLevelRange(roomCreatePacket.getLevelRange());
-        room.setBettingType(roomCreatePacket.getBettingType());
-        room.setBettingAmount(roomCreatePacket.getBettingAmount());
-        room.setBall(roomCreatePacket.getBall());
+        room.setBettingType(RoomBetting.sanitize(roomCreatePacket.getBettingType(), roomCreatePacket.getBettingAmount(), room.getMode()));
+        room.setBettingAmount(room.getBettingType() == 0 ? 0 : roomCreatePacket.getBettingAmount());
+        // notes-v404: a ball other than the Tennis Ball must be one of the owner's BALL rows (RoomBallUse).
+        room.setBall(RoomBallUse.validBall(client, roomCreatePacket.getBall()));
         room.setMap(roomCreatePacket.getMapId());
+        if (room.getRoomType() == RoomType.BATTLEMON) battlemonRoom(room);
 
         room.getPositions().set(0, RoomPositionState.InUse);
 
@@ -155,14 +161,14 @@ public class RoomManager {
             room.setPlayers(playerSize == 0 ? 2 : playerSize);
 
         if (room.getRoomType() == RoomType.BATTLEMON)
-            room.setPlayers((byte) 4);
+            room.setPlayers((byte) 2); // notes-v401: two humans, the Pets take seat + 2
 
         room.setPrivate(false);
         room.setSkillFree(true);
         room.setQuickSlot(true);
         room.setLevel((byte) player.getLevel());
         room.setLevelRange((byte) -1);
-        room.setBettingType('0');
+        room.setBettingType((char) 0);
         room.setBettingAmount(0);
         room.setBall(1);
         room.setMap((byte) 0);
@@ -209,7 +215,32 @@ public class RoomManager {
         }
     }
 
-    public synchronized RoomJoinResult joinRoom(final FTClient client, int roomId, byte unk0, String password) {
+    /**
+     * A Battlemon room (room type 2, notes-v401): Basic or Battle only (GuiPop_MakeRoom 56a8cf maps Pet Battle / Pet Basic to
+     * type 2 mode 1 / 0), two human seats (4bd700 removes position + 2 with its owner for room types 2 / 5 / 7: the Pets take
+     * seats 2 / 3), no betting (56a98e MSG_CAN_NOT_BETTING_PET_MODE), Pets allowed (RoomRequestPet).
+     */
+    private static void battlemonRoom(Room room) {
+        if (room.getMode() != GameMode.BASIC && room.getMode() != GameMode.BATTLE) room.setMode((byte) GameMode.BASIC);
+        room.setPlayers((byte) 2);
+        room.setBettingType((char) 0);
+        room.setBettingAmount(0);
+        room.setAllowBattlemon((byte) 1);
+    }
+
+    /** 0x138C refusal for entering a Battlemon room: -9 no picked-up Pet, -8 the Pet is dead, -7 its energy is 0 [I: native's
+     *  energy threshold is the server's; 0 is assumed]. 0 = may enter. */
+    static char battlemonEntryRefusal(FTClient client) {
+        var view = client.getActivePet();
+        if (view == null) return (char) -9;
+        var pet = ServiceManager.getInstance().getPetService().findById(view.id());
+        if (pet == null) return (char) -9;
+        if (!Boolean.TRUE.equals(pet.getAlive()) || pet.getHp() == null || pet.getHp() <= 0) return (char) -8;
+        if (pet.getEnergy() == null || pet.getEnergy() <= 0) return (char) -7;
+        return 0;
+    }
+
+    public RoomJoinResult joinRoom(final FTClient client, int roomId, byte unk0, String password) {
         Room room = rooms.stream()
                 .filter(r -> r.getRoomId() == roomId)
                 .findFirst()
@@ -220,6 +251,16 @@ public class RoomManager {
             return RoomJoinResult.of((char) -10, null, null);
         }
 
+        // Use the same monitor as seat changes and match start. A simultaneous
+        // join cannot claim a seat that another player is moving into.
+        synchronized (room) {
+            return joinRoomLocked(client, password, room);
+        }
+    }
+
+    private RoomJoinResult joinRoomLocked(final FTClient client, String password, Room room) {
+        // The last owner may have removed this room while the join waited.
+        if (!rooms.contains(room)) return RoomJoinResult.of((char) -10, null, null);
         final boolean isTownSquare = room.getRoomType() == 1 && room.getMode() == 2;
         final ConcurrentLinkedDeque<RoomPlayer> roomPlayerList = room.getRoomPlayerList();
 
@@ -280,14 +321,27 @@ public class RoomManager {
             }
         }
 
-        if (player.getLevel() < (room.getLevel() - room.getLevelRange()) && player.getLevel() > room.getLevel()) {
-            return RoomJoinResult.of((char) -10, room, null);
+        // notes-v391: a room with a level range (>= 0; -1 = none, native GuiPop_MakeRoom 56a850) refuses a player whose level
+        // is more than levelRange away from the room level. The client shows MSG_LEVEL_LIMITED_ROOM for -6 (native 4a7922).
+        // The old test (level below room level - range AND above room level) could never be true.
+        if (!isTownSquare && room.getLevelRange() >= 0 && Math.abs(player.getLevel() - room.getLevel()) > room.getLevelRange()) {
+            return RoomJoinResult.of((char) -6, room, null);
+        }
+        // notes-v401: a Battlemon room needs the joiner's picked-up Pet (0x138C -9 MSG_NO_PET_PICKUP, -8 MSG_PET_IS_DEAD,
+        // -7 MSG_PET_ENERGY_IS_LOW, native 4a798d / 4a797d / 4a7965).
+        if (room.getRoomType() == RoomType.BATTLEMON) {
+            char refusal = battlemonEntryRefusal(client);
+            if (refusal != 0) return RoomJoinResult.of(refusal, room, null);
         }
 
         int newPosition = -1;
         if (!isTownSquare) {
             Optional<Short> num = room.getPositions().stream().filter(x -> x == RoomPositionState.Free).findFirst();
             newPosition = useGmSlot ? 9 : num.map(pos -> room.getPositions().indexOf(pos)).orElse(-1);
+            // A club tournament room seats each member on its team's side (TournamentRooms, notes-v401).
+            Integer seat = room.getTournamentSeats() == null ? null : room.getTournamentSeats().get(player.getId());
+            if (!useGmSlot && seat != null && seat < room.getPositions().size() && room.getPositions().get(seat) == RoomPositionState.Free)
+                newPosition = seat;
         } else {
             List<Short> positions = roomPlayerList.stream().map(RoomPlayer::getPosition).toList();
             newPosition = (short) IntStream.range(0, room.getPlayers())

@@ -53,6 +53,24 @@ public class PetServiceImpl implements PetService {
         };
     }
 
+    @Override
+    @Transactional
+    public Pet save(Pet pet) {
+        return petRepository.save(pet);
+    }
+
+    @Override
+    @Transactional
+    public Pet revive(Pet pet) {
+        // The createPet values per model: Pikaro (0) energy 50 / hunger 100, every other model 100 / 150; lifeMax is kept per pet.
+        boolean pikaro = pet.getType() != null && pet.getType() == 0;
+        pet.setAlive(true);
+        pet.setEnergy(pikaro ? 50 : 100);
+        pet.setHunger(pikaro ? 100 : 150);
+        pet.setValidUntil(calculateValidUntil(pet.getLifeMax() != null ? pet.getLifeMax() : 60));
+        return petRepository.save(pet);
+    }
+
     private Pet createPet(String nameLabel, int strength, int stamina, int dexterity, int willpower,
                            int hp, int energy, int hunger, int life, int lifeMax, int level, int model,
                            PetStatistic petStatistic, Player player) {

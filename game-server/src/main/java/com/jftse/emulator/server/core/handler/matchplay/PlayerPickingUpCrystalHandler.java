@@ -64,8 +64,19 @@ public class PlayerPickingUpCrystalHandler implements PacketHandler<FTConnection
         short playerPosition = roomPlayer.getPosition();
         Queue<SkillCrystal> pickedUpSkillCrystals = roomPlayer.getPickedUpSkillCrystals();
 
+        // The client's 18E7 byte is a pet-category flag (49c050: 1 for runtime types 3/4), not a seat. A Pet pickup
+        // grants to the Pet's actor position (owner seat + 2 in a 2-seat room, the web port's Pet actor id; the native
+        // server's value is [I]) and fills the Pet's own inventory. Rolls, spawns and the field side stay the owner's.
+        short grantPosition = playerPosition;
+        if (packet.getPlayerPosition() != 0 && roomPlayer.getPet() != null && playerPosition < 2
+                && activeRoom.getRoomPlayerList().size() <= 2) {
+            grantPosition = (short) (playerPosition + 2);
+            pickedUpSkillCrystals = roomPlayer.getPetPickedUpSkillCrystals();
+        }
+
         final MatchplayGame game = gameSession.getMatchplayGame();
-        if (game == null)
+        // A late 18E7 after the match ended must not start a new crystal chain.
+        if (game == null || game.getFinished().get())
             return;
 
         boolean isBattleGame = game instanceof MatchplayBattleGame;
@@ -118,13 +129,13 @@ public class PlayerPickingUpCrystalHandler implements PacketHandler<FTConnection
                 pickedUpSkillCrystals.offer(skillCrystal);
             }
 
-            S2CMatchplayGiveSpecificSkill response = new S2CMatchplayGiveSpecificSkill((short) skillCrystal.getId(), playerPosition, randomSkillIndex);
+            S2CMatchplayGiveSpecificSkill response = new S2CMatchplayGiveSpecificSkill((short) skillCrystal.getId(), grantPosition, randomSkillIndex);
             GameManager.getInstance().sendPacketToAllClientsInSameGameSession(response, connection);
 
             GameEventBus.call(GameEventType.MP_PLAYER_PICKING_UP_CRYSTAL, ftClient, skillCrystal, randomSkillIndex);
         }
 
-        PlaceCrystalRandomlyTask placeCrystalRandomlyTask = isBattleGame ? new PlaceCrystalRandomlyTask(connection, gameFieldSide) : new PlaceCrystalRandomlyTask(connection);
+        PlaceCrystalRandomlyTask placeCrystalRandomlyTask = isBattleGame ? new PlaceCrystalRandomlyTask(connection, gameFieldSide, gameSession) : new PlaceCrystalRandomlyTask(connection, (short) -1, gameSession);
         long crystalSpawnInterval = isBattleGame ? ((MatchplayBattleGame) game).getCrystalSpawnInterval().get() : ((MatchplayGuardianGame) game).getCrystalSpawnInterval().get();
         RunnableEvent runnableEvent = eventHandler.createRunnableEvent(placeCrystalRandomlyTask, crystalSpawnInterval);
         gameSession.getFireables().push(runnableEvent);

@@ -1,6 +1,7 @@
 package com.jftse.emulator.server.core.handler.lobby.room;
 
 import com.jftse.emulator.server.core.life.room.Room;
+import com.jftse.emulator.server.core.life.room.RoomAccessPolicy;
 import com.jftse.emulator.server.core.manager.GameManager;
 import com.jftse.emulator.server.net.FTClient;
 import com.jftse.emulator.server.net.FTConnection;
@@ -17,6 +18,7 @@ public class RoomSkillFreeChangePacketHandler implements PacketHandler<FTConnect
         Room room = ftClient.getActiveRoom();
         if (room != null) {
             synchronized (room) {
+                if (!RoomAccessPolicy.mayConfigure(ftClient, room)) return;
                 room.setSkillFree(packet.getEnable());
             }
 

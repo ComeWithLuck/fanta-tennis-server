@@ -1,0 +1,7 @@
+// 559400: short result. 0 -> int the club's new gold (club record +0x60), MSG_OUT_OF_WITHDRAWAL_SUCCESS and a page-0
+// refresh; -1 MSG_GUILD_MEMBER_FAILED_2, -2 MSG_YOU_ARE_SHORT_OF_GUILD_GOLD, -3 MSG_OUT_OF_WITHDRAWAL_GOLD_RANGE,
+// -10 MSG_FORCE_DISCONNECTED_QUIT_DB_ERROR (the gold is read only for 0).
+message SMSG_GuildGoldWithdrawal (0x202A) {
+    short result = 1;
+    int32 guildGold = 2;
+}

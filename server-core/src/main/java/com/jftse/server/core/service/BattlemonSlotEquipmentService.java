@@ -10,6 +10,11 @@ public interface BattlemonSlotEquipmentService {
 
     BattlemonSlotEquipment findById(Long id);
 
+    BattlemonSlotEquipment findByPlayerId(Long playerId);
+
+    // The player's row, made (both slots 0) the first time the player equips a pet item.
+    BattlemonSlotEquipment findOrCreateByPlayerId(Long playerId);
+
     void updateBattlemonSlots(BattlemonSlotEquipment battlemonSlotEquipment, Integer battlemonSlotId);
 
     void updateBattlemonSlots(BattlemonSlotEquipment battlemonSlotEquipment, List<Integer> battlemonSlotItems);

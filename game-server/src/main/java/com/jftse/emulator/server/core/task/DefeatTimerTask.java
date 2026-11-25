@@ -40,7 +40,8 @@ public class DefeatTimerTask extends AbstractTask {
         }
 
         if (playTime > -1) {
-            RunnableEvent runnableEvent = eventHandler.createRunnableEvent(new FinishGameTask(connection), TimeUnit.MINUTES.toMillis(playTime));
+            // notes-v389: the finish acts through whoever is still in the session when it fires (FinishGameTask).
+            RunnableEvent runnableEvent = eventHandler.createRunnableEvent(new FinishGameTask(connection, gameSession), TimeUnit.MINUTES.toMillis(playTime));
 
             gameSession.getFireables().push(runnableEvent);
             eventHandler.offer(runnableEvent);

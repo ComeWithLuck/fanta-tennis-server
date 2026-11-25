@@ -39,6 +39,13 @@ public class Room {
     private ConcurrentLinkedDeque<RoomPlayer> roomPlayerList;
     private int status;
 
+    // A club house room (roomType 1, mode 3; notes-v405): its club and that club's entry settings, written into the room list
+    // row (0x138E, client reader 46cd00: wstring club name, byte access, int fee).
+    private Long clubHouseGuildId;
+    private String clubHouseName;
+    private byte clubHouseAccess;
+    private int clubHouseFee;
+
     // Guardian
     private boolean isHardMode; // Guardians are very strong
     private boolean isArcade; // You have to play against all guardians there are

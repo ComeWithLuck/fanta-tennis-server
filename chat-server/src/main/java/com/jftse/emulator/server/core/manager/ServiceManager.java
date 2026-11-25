@@ -75,6 +75,12 @@ public class ServiceManager {
     @Autowired
     private ItemSpecialService itemSpecialService;
     @Autowired
+    private CouponService couponService;
+    @Autowired
+    private CardPoolService cardPoolService;
+    @Autowired
+    private EmblemQuestService emblemQuestService;
+    @Autowired
     private SocialService socialService;
     @Autowired
     private ChallengeService challengeService;

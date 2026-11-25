@@ -2,6 +2,7 @@ package com.jftse.emulator.server.core.task;
 
 import com.jftse.emulator.server.core.life.room.GameSession;
 import com.jftse.emulator.server.core.manager.GameManager;
+import com.jftse.emulator.server.core.matchplay.GameSessionManager;
 import com.jftse.emulator.server.core.matchplay.MatchplayGame;
 import com.jftse.emulator.server.core.matchplay.event.EventHandler;
 import com.jftse.emulator.server.core.matchplay.event.RunnableEvent;
@@ -18,33 +19,37 @@ public class DespawnCrystalTask extends AbstractTask {
     private final FTConnection connection;
     private final SkillCrystal skillCrystal;
     private final short gameFieldSide;
+    // The match this chain belongs to (see PlaceCrystalRandomlyTask).
+    private final GameSession gameSession;
 
     private final EventHandler eventHandler;
 
     public DespawnCrystalTask(FTConnection connection, SkillCrystal skillCrystal, short gameFieldSide) {
-        this.connection = connection;
-        this.skillCrystal = skillCrystal;
-        this.gameFieldSide = gameFieldSide;
-
-        eventHandler = GameManager.getInstance().getEventHandler();
+        this(connection, skillCrystal, gameFieldSide, connection.getClient() == null ? null : connection.getClient().getActiveGameSession());
     }
 
     public DespawnCrystalTask(FTConnection connection, SkillCrystal skillCrystal) {
+        this(connection, skillCrystal, (short) -1);
+    }
+
+    public DespawnCrystalTask(FTConnection connection, SkillCrystal skillCrystal, short gameFieldSide, GameSession gameSession) {
         this.connection = connection;
         this.skillCrystal = skillCrystal;
-        this.gameFieldSide = -1;
+        this.gameFieldSide = gameFieldSide;
+        this.gameSession = gameSession;
 
         eventHandler = GameManager.getInstance().getEventHandler();
     }
 
     @Override
     public void run() {
-        if (connection.getClient() == null) return;
-
-        GameSession gameSession = connection.getClient().getActiveGameSession();
-        if (gameSession == null) return;
+        // notes-v389 (user-approved host handover, 2026-11-23): a task bound to a client that left the session acts through
+        // the session's current host (GameSessionManager.actingConnection).
+        final FTConnection connection = GameSessionManager.actingConnection(gameSession, this.connection);
+        if (connection == null) return;
 
         MatchplayGame game = gameSession.getMatchplayGame();
+        if (game == null || game.getFinished().get()) return;
         boolean isBattleGame = gameSession.getMatchplayGame() instanceof MatchplayBattleGame;
 
         boolean isCrystalStillAvailable =
@@ -60,9 +65,9 @@ public class DespawnCrystalTask extends AbstractTask {
 
             RunnableEvent runnableEvent;
             if (isBattleGame)
-                runnableEvent = eventHandler.createRunnableEvent(new PlaceCrystalRandomlyTask(connection, gameFieldSide), ((MatchplayBattleGame) game).getCrystalSpawnInterval().get());
+                runnableEvent = eventHandler.createRunnableEvent(new PlaceCrystalRandomlyTask(connection, gameFieldSide, gameSession), ((MatchplayBattleGame) game).getCrystalSpawnInterval().get());
             else
-                runnableEvent = eventHandler.createRunnableEvent(new PlaceCrystalRandomlyTask(connection), ((MatchplayGuardianGame) game).getCrystalSpawnInterval().get());
+                runnableEvent = eventHandler.createRunnableEvent(new PlaceCrystalRandomlyTask(connection, (short) -1, gameSession), ((MatchplayGuardianGame) game).getCrystalSpawnInterval().get());
 
             gameSession.getFireables().push(runnableEvent);
             eventHandler.offer(runnableEvent);

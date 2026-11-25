@@ -43,4 +43,8 @@ public class Guild extends AbstractBaseModel {
     private Boolean isPublic = true;
     private Byte[] allowedCharacterType;
     private Boolean castleOwner = false;
+    // Club house settings (GuiPop_GuildSystem castle tab, notes-v405): who may enter (0 master, 1 sub master, 2 members,
+    // 3 everyone; radGuildCastleQualification_00..03) and the admission fee (sldGuildCastleGold, 0..1000).
+    private Byte castleAccessLimit = 3;
+    private Integer castleAdmissionFee = 0;
 }

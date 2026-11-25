@@ -50,10 +50,8 @@ public class S2CRoomPlayerListInformationPacket extends Packet {
             this.write(roomPlayer.getCoupleName());
             this.write(0);
             this.write((byte) 0);
-            this.write((short) 0); // emblem slot 1
-            this.write((short) 0); // emblem slot 2
-            this.write((short) 0); // emblem slot 3
-            this.write((short) 0); // emblem slot 4
+            // The four equipped emblems (notes-v185 E3; were zeros).
+            com.jftse.emulator.server.core.packets.emblem.S2CEmblemSlotPacket.write(this, roomPlayer.getPlayerId());
 
             this.write((BattleUtils.calculatePlayerHp(roomPlayer.getLevel()) + equippedItemStats.getAddHp()));
 

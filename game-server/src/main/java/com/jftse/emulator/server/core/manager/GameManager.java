@@ -1,5 +1,6 @@
 package com.jftse.emulator.server.core.manager;
 
+import com.jftse.emulator.server.core.handler.lobby.room.RoomBettingPackets;
 import com.jftse.emulator.common.scripting.ScriptManagerFactory;
 import com.jftse.emulator.common.scripting.ScriptManagerV2;
 import com.jftse.emulator.common.service.ConfigService;
@@ -374,7 +375,16 @@ public class GameManager implements ServerLoopHandler {
         });
     }
 
-    public synchronized void handleRoomPlayerChanges(final FTConnection connection, final boolean notifyClients) {
+    public void handleRoomPlayerChanges(final FTConnection connection, final boolean notifyClients) {
+        FTClient client = connection.getClient();
+        Room room = client == null ? null : client.getActiveRoom();
+        if (room == null) return;
+        synchronized (room) {
+            if (client.getActiveRoom() == room) handleRoomPlayerChangesLocked(connection, notifyClients);
+        }
+    }
+
+    private void handleRoomPlayerChangesLocked(final FTConnection connection, final boolean notifyClients) {
         FTClient client = connection.getClient();
         if (!client.hasPlayer())
             return;
@@ -390,6 +400,8 @@ public class GameManager implements ServerLoopHandler {
         final Optional<RoomPlayer> roomPlayer = Optional.ofNullable(client.getRoomPlayer());
 
         final short playerPosition = roomPlayer.isPresent() ? roomPlayer.get().getPosition() : -1;
+        // A spectator's gold bet goes back when leaving before the match (RoomBetting, notes-v179).
+        roomPlayer.ifPresent(rp -> RoomBettingPackets.refundOnLeave(room, client, rp));
 
         final boolean isMaster = roomPlayer.isPresent() && roomPlayer.get().isMaster();
         if (isMaster) {
@@ -439,7 +451,23 @@ public class GameManager implements ServerLoopHandler {
             } else {
                 GameSession gameSession = gameSessionManager.getGameSessionBySessionId(client.getGameSessionId());
                 if (gameSession != null) {
-                    gameSession.getClients().removeIf(c -> c.hasPlayer() && c.getPlayer().getId() == activePlayer.getId());
+                    Integer sessionId = client.getGameSessionId();
+                    if (gameSessionManager.cancelAbandonedBasicSession(sessionId, gameSession, room, playerPosition)) {
+                        matchRallyStatsConsumer.clearSession(sessionId);
+                    } else {
+                        gameSession.getClients().removeIf(c -> c.hasPlayer() && c.getPlayer().getId() == activePlayer.getId());
+                        // An abandoned Battle / Guardian session (its last client left) is cancelled like the basic one
+                        // (futures, countdown, fireables, gameSessionList); otherwise a departed host hands the host to the
+                        // next player (user-approved 2026-11-23, notes-v385).
+                        if (gameSession.getClients().isEmpty()) {
+                            if (!gameSessionManager.cancelEmptySession(sessionId, gameSession, room)) {
+                                gameSession.getFireables().forEach(f -> f.setCancelled(true));
+                                gameSession.getFireables().clear();
+                            }
+                        } else {
+                            gameSessionManager.handOverHost(gameSession, client, room);
+                        }
+                    }
                 }
                 client.setActiveGameSession(null);
             }

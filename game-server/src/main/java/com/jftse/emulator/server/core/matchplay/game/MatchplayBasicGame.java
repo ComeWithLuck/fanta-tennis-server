@@ -42,6 +42,8 @@ public class MatchplayBasicGame extends MatchplayGame {
     private AtomicInteger pointsBlueTeam;
     private AtomicInteger setsRedTeam;
     private AtomicInteger setsBlueTeam;
+    /** The room rule: 0 Short Match, 1 Tie Match (notes-v402). */
+    private byte rule;
     private AtomicReference<RoomPlayer> servePlayer;
     private AtomicReference<RoomPlayer> receiverPlayer;
 
@@ -103,6 +105,26 @@ public class MatchplayBasicGame extends MatchplayGame {
         this.jdbcUtil = ServiceManager.getInstance().getJdbcUtil();
     }
 
+    /**
+     * The room rule (notes-v402, native 4a3da0 on [7b1fbc]): 0 Short Match - the first team to two sets wins; 1 Tie Match - a team
+     * wins at 2-0, 3-1 or 3-2, and at 2-2 the last set is a tie-break (isTieBreak). Every set is one game with deuce, as before.
+     */
+    public static boolean setsWin(byte rule, int sets, int otherSets) {
+        return rule == 1 ? (sets == 2 && otherSets == 0) || sets == 3 : sets == 2;
+    }
+
+    public boolean redTeamWon() {
+        return setsWin(this.rule, this.setsRedTeam.get(), this.setsBlueTeam.get());
+    }
+
+    public boolean blueTeamWon() {
+        return setsWin(this.rule, this.setsBlueTeam.get(), this.setsRedTeam.get());
+    }
+
+    public boolean isTieBreak() {
+        return this.rule == 1 && this.setsRedTeam.get() == 2 && this.setsBlueTeam.get() == 2;
+    }
+
     public void setPoints(byte pointsRedTeam, byte pointsBlueTeam) {
         if (this.finished.get())
             return;
@@ -121,7 +143,17 @@ public class MatchplayBasicGame extends MatchplayGame {
         this.pointsRedTeam.set(pointsRedTeam);
         this.pointsBlueTeam.set(pointsBlueTeam);
 
-        if (pointsRedTeam == 4 && pointsBlueTeam < 3) {
+        // notes-v402: Tie Match (room rule 1) at two sets all plays the last set as a tie-break: the first team to 7 points wins it,
+        // no two-point lead (native 4a45a1: +0x3f4 set -> points +0x424 / +0x428 == 7 adds the set).
+        if (isTieBreak()) {
+            if (pointsRedTeam >= 7) {
+                this.setsRedTeam.getAndIncrement();
+                resetPoints();
+            } else if (pointsBlueTeam >= 7) {
+                this.setsBlueTeam.getAndIncrement();
+                resetPoints();
+            }
+        } else if (pointsRedTeam == 4 && pointsBlueTeam < 3) {
             this.setsRedTeam.getAndIncrement();
             resetPoints();
         } else if (pointsRedTeam > 4 && (pointsRedTeam - pointsBlueTeam) == 2) {
@@ -135,7 +167,7 @@ public class MatchplayBasicGame extends MatchplayGame {
             resetPoints();
         }
 
-        if (this.setsRedTeam.get() == 2 || this.setsBlueTeam.get() == 2) {
+        if (redTeamWon() || blueTeamWon()) {
             this.finished.set(true);
 
             Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
@@ -296,7 +328,7 @@ public class MatchplayBasicGame extends MatchplayGame {
         for (int playerPosition : this.getPlayerPositionsOrderedByPerformance()) {
             boolean wonGame = false;
             boolean isPlayerInRedTeam = this.isRedTeam(playerPosition);
-            if (isPlayerInRedTeam && this.getSetsRedTeam().get() == 2 || !isPlayerInRedTeam && this.getSetsBlueTeam().get() == 2) {
+            if (isPlayerInRedTeam && redTeamWon() || !isPlayerInRedTeam && blueTeamWon()) {
                 wonGame = true;
             }
 
@@ -345,7 +377,7 @@ public class MatchplayBasicGame extends MatchplayGame {
                         .findFirst()
                         .orElse(new PlayerReward(rp.getPosition()));
 
-                if (isCurrentPlayerInRedTeam && this.getSetsRedTeam().get() == 2 || !isCurrentPlayerInRedTeam && this.getSetsBlueTeam().get() == 2) {
+                if (isCurrentPlayerInRedTeam && redTeamWon() || !isCurrentPlayerInRedTeam && blueTeamWon()) {
                     wonGame = true;
                 }
 
@@ -394,6 +426,8 @@ public class MatchplayBasicGame extends MatchplayGame {
 
                 playerReward.setExp(rewardExp);
                 playerReward.setGold(rewardGold);
+                playerReward.setBaseExp((int) Math.round(rewardExpSimple / 3.5));
+                playerReward.setBaseGold((int) Math.round(rewardGoldSimple / 3.5));
 
                 // add couple bonus
                 Long coupleId = rp.getCoupleId();

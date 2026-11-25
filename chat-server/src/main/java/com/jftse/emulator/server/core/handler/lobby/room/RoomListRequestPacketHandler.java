@@ -34,6 +34,9 @@ public class RoomListRequestPacketHandler implements PacketHandler<FTConnection,
             direction = 0;
         }
 
+        // One club house room per castle-owning club, kept in step with the clubs' settings (notes-v405).
+        GameManager.getInstance().getRoomManager().syncClubHouses();
+
         final int currentRoomType = client.getLobbyGameModeTabFilter();
         int availableRoomsCount = (int) GameManager.getInstance().getRooms().stream()
                 .filter(x -> currentRoomType == ChatMode.ALL || GameManager.getInstance().getChatMode(x) == currentRoomType)

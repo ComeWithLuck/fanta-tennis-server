@@ -1,0 +1,4 @@
+message CMSG_Betting (0x1DB0) {
+    byte betMode = 1;
+    byte side = 2;
+}

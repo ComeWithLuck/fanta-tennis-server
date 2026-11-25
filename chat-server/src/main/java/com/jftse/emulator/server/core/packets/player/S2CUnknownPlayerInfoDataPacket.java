@@ -17,9 +17,11 @@ public class S2CUnknownPlayerInfoDataPacket extends Packet {
         EquippedItemParts equippedItemParts = player.getItemPartsPPId();
         EquippedItemStats equippedItemStats = player.getItemStats();
 
-        this.write(player.getName());
-
         GuildView guild = player.getGuild();
+        // The client reads this string as the character's club name (char +0x20e: My Info's club, the messenger's club
+        // test, the guild mark change check), not the player name - empty without a club.
+        this.write(guild != null && guild.name() != null ? guild.name() : "");
+
         if (guild != null) {
             this.write(guild.logoBackgroundId());
             this.write(guild.logoBackgroundColor());
@@ -93,7 +95,7 @@ public class S2CUnknownPlayerInfoDataPacket extends Packet {
 
         this.write(-1); // active pet type
         this.write(pocket.getMaxBelongings().shortValue());
-        this.write((byte) 0); // card slots
+        this.write(pocket.getCardSlotCount() == null ? (byte) 0 : pocket.getCardSlotCount()); // extra card slots (notes-v174; client shows + 1)
 
         this.write(equippedItemParts.hair());
         this.write(equippedItemParts.face());

@@ -39,6 +39,13 @@ public class Room {
     private byte levelRange;
     private char bettingType;
     private int bettingAmount;
+    // The tournament match (TournamentMatch row id) this room was made for by 0x26C6, null for any other room (notes-v186).
+    private volatile Long tournamentMatchId;
+    private volatile Integer tournamentId;
+    // When the match room was made (ms): the 0x2410 wait period starts here (notes-v198).
+    private volatile Long tournamentWaitStart;
+    // A club tournament match room's seats by player id: the making team red (0, 2), the other blue (1, 3) (notes-v401).
+    private volatile java.util.Map<Long, Integer> tournamentSeats;
     private byte map;
     private int ball;
     private String password;

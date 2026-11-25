@@ -2,11 +2,13 @@ package com.jftse.emulator.server.core.handler.lobby.room;
 
 import com.jftse.emulator.server.core.client.FTPlayer;
 import com.jftse.emulator.server.core.life.room.Room;
+import com.jftse.emulator.server.core.life.room.RoomAccessPolicy;
 import com.jftse.emulator.server.core.manager.GameManager;
 import com.jftse.emulator.server.core.packets.lobby.room.S2CRoomInformationPacket;
 import com.jftse.emulator.server.core.packets.lobby.room.S2CRoomListAnswerPacket;
 import com.jftse.emulator.server.net.FTClient;
 import com.jftse.emulator.server.net.FTConnection;
+import com.jftse.server.core.constants.GameMode;
 import com.jftse.server.core.handler.PacketHandler;
 import com.jftse.server.core.handler.PacketId;
 import com.jftse.server.core.shared.packets.lobby.room.CMSGRoomChangeGameMode;
@@ -24,6 +26,10 @@ public class GameModeChangePacketHandler implements PacketHandler<FTConnection, 
 
         if (room != null) {
             synchronized (room) {
+                // notes-v391: only the room owner, before the match, and only Basic <-> Battle (native cmMode 54eaa7 / 54f1d8:
+                // a Guardian room offers no mode change, the combo sends 1 or 0).
+                if (!RoomAccessPolicy.mayConfigure(client, room)) return;
+                if (room.getMode() == GameMode.GUARDIAN || (packet.getMode() != GameMode.BASIC && packet.getMode() != GameMode.BATTLE)) return;
                 room.setMode(packet.getMode());
             }
 

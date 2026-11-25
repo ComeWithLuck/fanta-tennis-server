@@ -114,4 +114,19 @@ public class EventHandler {
                 .delayMS(delayMS)
                 .build();
     }
+
+    public PacketEvent createMatchPacketEvent(FTClient client, Packet packet, PacketEventType type, long delayMS) {
+        return createMatchPacketEvent(client, packet, type, delayMS, false);
+    }
+
+    public PacketEvent createMatchPacketEvent(FTClient client, Packet packet, PacketEventType type, long delayMS, boolean requireActiveSession) {
+        var room = client.getActiveRoom();
+        var session = client.getActiveGameSession();
+        long roomEpoch = client.getRoomEpoch(), matchEpoch = client.getGameSessionEpoch();
+        PacketEvent event = createPacketEvent(client, packet, type, delayMS);
+        event.setDeliveryCondition(() -> client.getActiveRoom() == room
+                && client.getRoomEpoch() == roomEpoch && client.getGameSessionEpoch() == matchEpoch
+                && (!requireActiveSession || (session != null && client.getActiveGameSession() == session)));
+        return event;
+    }
 }

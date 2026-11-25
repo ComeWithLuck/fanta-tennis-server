@@ -2,6 +2,7 @@ package com.jftse.emulator.server.core.handler.lobby.room;
 
 import com.jftse.emulator.server.core.life.room.Room;
 import com.jftse.emulator.server.core.life.room.RoomJoinResult;
+import com.jftse.emulator.server.core.handler.item.FixedChatBoardRequestPacketHandler;
 import com.jftse.emulator.server.core.manager.GameManager;
 import com.jftse.emulator.server.core.manager.RoomManager;
 import com.jftse.emulator.server.core.packets.lobby.room.*;
@@ -82,6 +83,8 @@ public class RoomJoinRequestPacketHandler implements PacketHandler<FTConnection,
         connection.sendTCP(roomJoinAnswerPacket);
 
         roomManager.sendRoomInformation(connection, joinResult.room(), clientsInRoom);
+        // The room's fixed chat lines (0x22CF: slot = room position), drawn above those players' heads (client 4d6b30).
+        FixedChatBoardRequestPacketHandler.sendBoard(connection, clientsInRoom);
 
         GameManager.getInstance().updateLobbyRoomListForAllClients(connection);
         GameManager.getInstance().refreshLobbyPlayerListForAllClients();

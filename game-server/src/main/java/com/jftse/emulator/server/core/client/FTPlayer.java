@@ -373,6 +373,8 @@ public class FTPlayer {
     public void syncLevel(int newLevel) {
         this.level = newLevel;
         this.entity.setLevel((byte) newLevel);
+        // LevelService awards points on the entity before this cache update.
+        this.statusPoints = this.entity.getStatusPoints();
         this.lastUpdateTime = Time.getNSTime();
     }
 
@@ -381,6 +383,7 @@ public class FTPlayer {
         this.expPoints = newExpPoints;
         this.entity.setLevel((byte) newLevel);
         this.entity.setExpPoints(newExpPoints);
+        this.statusPoints = this.entity.getStatusPoints();
         this.lastUpdateTime = Time.getNSTime();
     }
 

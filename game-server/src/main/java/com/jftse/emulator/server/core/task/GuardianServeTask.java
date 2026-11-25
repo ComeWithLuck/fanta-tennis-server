@@ -3,6 +3,7 @@ package com.jftse.emulator.server.core.task;
 import com.jftse.emulator.server.core.constants.GameFieldSide;
 import com.jftse.emulator.server.core.life.room.GameSession;
 import com.jftse.emulator.server.core.manager.GameManager;
+import com.jftse.emulator.server.core.matchplay.GameSessionManager;
 import com.jftse.emulator.server.core.matchplay.game.MatchplayGuardianGame;
 import com.jftse.emulator.server.core.matchplay.guardian.PhaseManager;
 import com.jftse.emulator.server.core.packets.matchplay.S2CGameSetNameColorAndRemoveBlackBar;
@@ -18,12 +19,19 @@ import lombok.extern.log4j.Log4j2;
 public class GuardianServeTask extends AbstractTask {
     private final FTConnection connection;
 
+    private final GameSession boundSession;
+
     public GuardianServeTask(FTConnection connection) {
         this.connection = connection;
+        this.boundSession = connection.getClient() == null ? null : connection.getClient().getActiveGameSession();
     }
 
     @Override
     public void run() {
+        // notes-v389 (user-approved host handover, 2026-11-23): a task bound to a client that left the session acts through
+        // the session's current host (GameSessionManager.actingConnection).
+        final FTConnection connection = GameSessionManager.actingConnection(boundSession, this.connection);
+        if (connection == null) return;
         FTClient client = connection.getClient();
         if (client == null) return;
 

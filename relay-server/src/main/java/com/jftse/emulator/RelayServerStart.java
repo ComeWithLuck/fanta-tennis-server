@@ -3,6 +3,7 @@ package com.jftse.emulator;
 import com.jftse.emulator.server.core.manager.RelayManager;
 import com.jftse.emulator.server.net.ConnectionInitializer;
 import com.jftse.server.core.ServerLoop;
+import com.jftse.server.core.net.BrowserTransport;
 import com.jftse.server.core.StartupBanner;
 import com.jftse.server.core.YamlPropertySourceFactory;
 import com.jftse.server.core.protocol.PacketAutoRegister;
@@ -68,18 +69,20 @@ public class RelayServerStart implements CommandLineRunner {
 
         Class<? extends ServerChannel> serverChannelClass = useEpoll ? EpollServerSocketChannel.class : NioServerSocketChannel.class;
 
+        ConnectionInitializer initializer = new ConnectionInitializer();
         ServerBootstrap b = new ServerBootstrap();
         b.group(bossGroup, workerGroup)
                 .channel(serverChannelClass)
                 .option(ChannelOption.SO_BACKLOG, 4096)
                 .option(ChannelOption.SO_REUSEADDR, true)
-                .childHandler(new ConnectionInitializer())
+                .childHandler(initializer)
                 .childOption(ChannelOption.TCP_NODELAY, true)
                 .childOption(ChannelOption.SO_KEEPALIVE, true)
                 .childOption(ChannelOption.SO_RCVBUF, 256 * 1024) // 256 KB
                 .childOption(ChannelOption.SO_SNDBUF, 512 * 1024) // 512 KB
                 .childOption(ChannelOption.WRITE_BUFFER_WATER_MARK, new WriteBufferWaterMark(64 * 1024, 256 * 1024)); // 64 KB low, 256 KB high
 
+        BrowserTransport.bind(b, initializer);
         final int port = serverConfService.get("ServerPort", Integer.class);
         b.bind(port).addListener(cf -> {
             if (cf.isSuccess()) {

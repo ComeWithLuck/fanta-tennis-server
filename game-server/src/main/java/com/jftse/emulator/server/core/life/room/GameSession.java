@@ -29,6 +29,8 @@ public class GameSession {
     private ConcurrentLinkedDeque<Fireable> fireables;
     private volatile RunnableEvent countDownRunnable;
     private int mode;
+    // The client that got SetHost(1) at start (RoomStartGamePacketHandler) or by a handover (GameSessionManager.handOverHost).
+    private volatile FTClient hostClient;
 
     public void setMatchplayGame(MatchplayGame game) {
         this.matchplayGame = game;

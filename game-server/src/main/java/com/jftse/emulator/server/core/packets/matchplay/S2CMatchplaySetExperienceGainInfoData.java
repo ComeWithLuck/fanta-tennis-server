@@ -14,20 +14,21 @@ public class S2CMatchplaySetExperienceGainInfoData extends Packet {
         this.write(resultTitle); // 0 = Loser, 1 = Winner
         this.write(playerLevel); // level
 
-        this.write(playerReward != null ? playerReward.getExp() : 0); // EXP BASIC
-        this.write(playerReward != null ? playerReward.getGold() : 0); // GOLD BASIC
-        this.write(0); // EXP BONUS
-        this.write(0); // GOLD BONUS
-        this.write(playerReward != null ? playerReward.getExp() : 0); // EXP TOTAL -> current exp + won exp
-        this.write(playerReward != null ? playerReward.getGold() : 0); // GOLD TOTAL -> current gold + won gold
+        this.write(playerReward != null ? playerReward.getBaseExp() : 0); // EXP BASIC
+        this.write(playerReward != null ? playerReward.getBaseGold() : 0); // GOLD BASIC
+        this.write(playerReward != null ? playerReward.getBonusExp() : 0); // EXP BONUS
+        this.write(playerReward != null ? playerReward.getBonusGold() : 0); // GOLD BONUS
+        this.write(playerReward != null ? playerReward.getExp() : 0); // total EXP awarded, not account balance
+        this.write(playerReward != null ? playerReward.getGold() : 0); // total Gold awarded, not account balance
 
         this.write((byte) 0); // perfects
         this.write((byte) 0); // guards
 
         this.write(secondsNeeded); // Playtime in seconds
         this.write(playerReward != null ? playerReward.getRankingPoints() : 0); // Ranking point reward
-        this.write(0); // Unk
-        this.write(0); // Unk
+        // 4908b0 +0x48 club points / +0x4c club gold (GuiCtrl_GameResultDetail stGuildPoint / stGuildGold, notes-v401).
+        this.write(playerReward != null ? playerReward.getClubPoints() : 0);
+        this.write(playerReward != null ? playerReward.getClubGold() : 0);
 
         // 0000 0001 = PF, 0000 0010 = GB, 0000 0100 = Time, 0000 1000 = matchplay, 0001 0000 = Lv up, ...
         // 0000 0001 = Couple Bonus
