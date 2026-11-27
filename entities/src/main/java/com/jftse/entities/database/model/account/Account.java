@@ -5,6 +5,7 @@ import com.jftse.entities.database.model.ServerType;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.envers.Audited;
+import org.hibernate.envers.NotAudited;
 
 import javax.persistence.*;
 import java.util.Date;
@@ -20,6 +21,8 @@ public class Account extends AbstractBaseModel {
 
     @Column(unique = true)
     private String username;
+    // Never copy the password (or its hash) into the account_aud history table.
+    @NotAudited
     private String password;
     private String email;
     // char
